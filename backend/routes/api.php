@@ -36,39 +36,67 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     
-    // Dashboard
+    // Dashboard (all roles)
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/dashboard/export-materials', [DashboardController::class, 'exportMaterials']);
     
-    // Windows Management
-    Route::apiResource('windows', WindowController::class);
-    Route::post('windows/{window}/update-stock', [WindowController::class, 'updateStock']);
+    // Windows Management (admin only for create/update/delete)
+    Route::get('windows', [WindowController::class, 'index']);
+    Route::get('windows/{window}', [WindowController::class, 'show']);
+    Route::middleware('role:admin')->group(function () {
+        Route::post('windows', [WindowController::class, 'store']);
+        Route::put('windows/{window}', [WindowController::class, 'update']);
+        Route::delete('windows/{window}', [WindowController::class, 'destroy']);
+        Route::post('windows/{window}/update-stock', [WindowController::class, 'updateStock']);
+    });
     
-    // Profiles Management
-    Route::apiResource('profiles', ProfileController::class);
+    // Profiles Management (admin only for create/update/delete)
+    Route::get('profiles', [ProfileController::class, 'index']);
+    Route::get('profiles/{profile}', [ProfileController::class, 'show']);
+    Route::middleware('role:admin')->group(function () {
+        Route::post('profiles', [ProfileController::class, 'store']);
+        Route::put('profiles/{profile}', [ProfileController::class, 'update']);
+        Route::delete('profiles/{profile}', [ProfileController::class, 'destroy']);
+    });
     
-    // Glass Types Management
-    Route::apiResource('glasses', GlassController::class);
+    // Glass Types Management (admin only for create/update/delete)
+    Route::get('glasses', [GlassController::class, 'index']);
+    Route::get('glasses/{glass}', [GlassController::class, 'show']);
+    Route::middleware('role:admin')->group(function () {
+        Route::post('glasses', [GlassController::class, 'store']);
+        Route::put('glasses/{glass}', [GlassController::class, 'update']);
+        Route::delete('glasses/{glass}', [GlassController::class, 'destroy']);
+    });
     
-    // Orders Management
-    Route::apiResource('orders', OrderController::class);
-    Route::post('orders/{order}/update-status', [OrderController::class, 'updateStatus']);
+    // Orders Management (all roles can view, admin can manage)
+    Route::get('orders', [OrderController::class, 'index']);
+    Route::get('orders/{order}', [OrderController::class, 'show']);
+    Route::middleware('role:admin')->group(function () {
+        Route::post('orders', [OrderController::class, 'store']);
+        Route::put('orders/{order}', [OrderController::class, 'update']);
+        Route::delete('orders/{order}', [OrderController::class, 'destroy']);
+        Route::post('orders/{order}/update-status', [OrderController::class, 'updateStatus']);
+    });
     
-    // Materials & Stock Management
-    Route::apiResource('materials', MaterialController::class);
-    Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock']);
-    Route::post('materials/{material}/remove-stock', [MaterialController::class, 'removeStock']);
+    // Materials & Stock Management (warehouse and admin)
+    Route::middleware('role:admin,warehouse')->group(function () {
+        Route::apiResource('materials', MaterialController::class);
+        Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock']);
+        Route::post('materials/{material}/remove-stock', [MaterialController::class, 'removeStock']);
+    });
     Route::get('materials/{material}/movements', [MaterialController::class, 'movements']);
     Route::get('low-stock', [MaterialController::class, 'lowStock']);
     
-    // Old Production Orders (legacy)
-    Route::apiResource('production-orders-old', ApiProductionOrderController::class);
-    Route::post('production-orders-old/{productionOrder}/start', [ApiProductionOrderController::class, 'start']);
-    Route::post('production-orders-old/{productionOrder}/complete', [ApiProductionOrderController::class, 'complete']);
-    Route::post('production-orders-old/{productionOrder}/cancel', [ApiProductionOrderController::class, 'cancel']);
+    // Old Production Orders (legacy - admin only)
+    Route::middleware('role:admin')->group(function () {
+        Route::apiResource('production-orders-old', ApiProductionOrderController::class);
+        Route::post('production-orders-old/{productionOrder}/start', [ApiProductionOrderController::class, 'start']);
+        Route::post('production-orders-old/{productionOrder}/complete', [ApiProductionOrderController::class, 'complete']);
+        Route::post('production-orders-old/{productionOrder}/cancel', [ApiProductionOrderController::class, 'cancel']);
+    });
     
-    // New Production System
-    Route::prefix('production')->group(function () {
+    // New Production System (production and admin roles)
+    Route::prefix('production')->middleware('role:production,admin')->group(function () {
         // Production Orders
         Route::get('orders', [ProductionOrderController::class, 'index']);
         Route::post('orders', [ProductionOrderController::class, 'store']);
@@ -95,8 +123,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('issues/{id}/resolve', [ProductionIssueController::class, 'resolve']);
     });
     
-    // Warehouse System
-    Route::prefix('warehouse')->group(function () {
+    // Warehouse System (warehouse and admin roles)
+    Route::prefix('warehouse')->middleware('role:warehouse,admin')->group(function () {
         Route::get('deliveries', [WarehouseDeliveryController::class, 'index']);
         Route::get('deliveries/statistics', [WarehouseDeliveryController::class, 'statistics']);
         Route::get('deliveries/{id}', [WarehouseDeliveryController::class, 'show']);
@@ -105,11 +133,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('deliveries/{id}/reject', [WarehouseDeliveryController::class, 'reject']);
     });
     
-    // Image Upload
-    Route::post('upload/image', [ImageUploadController::class, 'upload']);
-    Route::delete('upload/image', [ImageUploadController::class, 'delete']);
+    // Image Upload (admin only)
+    Route::middleware('role:admin')->group(function () {
+        Route::post('upload/image', [ImageUploadController::class, 'upload']);
+        Route::delete('upload/image', [ImageUploadController::class, 'delete']);
+    });
     
-    // Notifications
+    // Notifications (all authenticated users)
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);
         Route::get('/unread-count', [NotificationController::class, 'unreadCount']);

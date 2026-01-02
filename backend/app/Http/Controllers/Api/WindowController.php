@@ -9,10 +9,38 @@ use Illuminate\Http\JsonResponse;
 
 class WindowController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $windows = Window::with(['profile', 'glass'])
-            ->get();
+        $query = Window::with(['profile', 'glass']);
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('type', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by type
+        if ($request->has('type')) {
+            $query->where('type', $request->get('type'));
+        }
+
+        // Filter by active status
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        }
+
+        // Sort
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        $query->orderBy($sortBy, $sortOrder);
+
+        // Paginate
+        $perPage = $request->get('per_page', 15);
+        $windows = $query->paginate($perPage);
         
         return new JsonResponse($windows);
     }

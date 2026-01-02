@@ -9,9 +9,40 @@ use Illuminate\Http\JsonResponse;
 
 class ProfileController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $profiles = Profile::where('is_active', true)->get();
+        $query = Profile::query();
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('manufacturer', 'like', "%{$search}%")
+                  ->orWhere('type', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by active
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        } else {
+            $query->where('is_active', true);
+        }
+
+        // Sort
+        $sortBy = $request->get('sort_by', 'name');
+        $sortOrder = $request->get('sort_order', 'asc');
+        $query->orderBy($sortBy, $sortOrder);
+
+        // Paginate or return all
+        if ($request->has('per_page')) {
+            $perPage = $request->get('per_page', 15);
+            $profiles = $query->paginate($perPage);
+        } else {
+            $profiles = $query->get();
+        }
+        
         return response()->json($profiles);
     }
 

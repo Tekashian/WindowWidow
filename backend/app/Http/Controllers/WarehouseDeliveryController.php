@@ -28,10 +28,24 @@ class WarehouseDeliveryController extends Controller
             'receiver'
         ]);
 
+        // Search
+        if ($request->has('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('delivery_number', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%")
+                  ->orWhereHas('productionOrder', function($subQ) use ($search) {
+                      $subQ->where('order_number', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Filter by status
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
+        // Filter pending/delayed
         if ($request->boolean('pending_only')) {
             $query->pending();
         }
@@ -40,7 +54,22 @@ class WarehouseDeliveryController extends Controller
             $query->delayed();
         }
 
-        $deliveries = $query->orderBy('expected_delivery_date', 'asc')->get();
+        // Date range filter
+        if ($request->has('date_from')) {
+            $query->whereDate('expected_delivery_date', '>=', $request->get('date_from'));
+        }
+        if ($request->has('date_to')) {
+            $query->whereDate('expected_delivery_date', '<=', $request->get('date_to'));
+        }
+
+        // Sort
+        $sortBy = $request->get('sort_by', 'expected_delivery_date');
+        $sortOrder = $request->get('sort_order', 'asc');
+        $query->orderBy($sortBy, $sortOrder);
+
+        // Paginate
+        $perPage = $request->get('per_page', 15);
+        $deliveries = $query->paginate($perPage);
 
         return response()->json($deliveries);
     }

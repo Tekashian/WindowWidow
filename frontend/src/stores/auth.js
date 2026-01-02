@@ -105,6 +105,44 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Role check helpers
+  function hasRole(...roles) {
+    if (!user.value || !user.value.role) return false
+    return roles.includes(user.value.role)
+  }
+
+  function isAdmin() {
+    return hasRole('admin')
+  }
+
+  function isProduction() {
+    return hasRole('production')
+  }
+
+  function isWarehouse() {
+    return hasRole('warehouse')
+  }
+
+  function canAccessProduction() {
+    return hasRole('production', 'admin')
+  }
+
+  function canAccessWarehouse() {
+    return hasRole('warehouse', 'admin')
+  }
+
+  function canAccessAdmin() {
+    return hasRole('admin')
+  }
+
+  function canManageWindows() {
+    return hasRole('admin')
+  }
+
+  function canManageMaterials() {
+    return hasRole('admin', 'warehouse')
+  }
+
   return {
     user,
     token,
@@ -113,6 +151,15 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     login,
     logout,
-    fetchUser
+    fetchUser,
+    hasRole,
+    isAdmin,
+    isProduction,
+    isWarehouse,
+    canAccessProduction,
+    canAccessWarehouse,
+    canAccessAdmin,
+    canManageWindows,
+    canManageMaterials
   }
 })

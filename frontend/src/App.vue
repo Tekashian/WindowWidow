@@ -3,12 +3,20 @@ import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { computed, ref } from 'vue'
 import { useAuthStore } from './stores/auth'
 import NotificationCenter from './components/NotificationCenter.vue'
+import ToastContainer from './components/ToastContainer.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const confirmDialogRef = ref(null)
 
 const user = computed(() => authStore.user)
 const mobileMenuOpen = ref(false)
+
+// Permission checks
+const canAccessProduction = computed(() => authStore.canAccessProduction())
+const canAccessWarehouse = computed(() => authStore.canAccessWarehouse())
+const canAccessAdmin = computed(() => authStore.canAccessAdmin())
 
 const handleLogout = async () => {
   await authStore.logout()
@@ -74,45 +82,50 @@ const closeMobileMenu = () => {
         </li>
         
         <!-- Production Panel -->
-        <li class="nav-section-title">🏭 Produkcja</li>
-        <li>
-          <RouterLink to="/production" class="nav-link" @click="closeMobileMenu">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-            </svg>
-            <span>Dashboard Produkcji</span>
-          </RouterLink>
-        </li>
-        <li>
-          <RouterLink to="/production/orders" class="nav-link" @click="closeMobileMenu">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-            </svg>
-            <span>Zlecenia</span>
-          </RouterLink>
-        </li>
-        <li>
-          <RouterLink to="/production/issues" class="nav-link" @click="closeMobileMenu">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <span>Problemy</span>
-          </RouterLink>
-        </li>
+        <template v-if="canAccessProduction">
+          <li class="nav-section-title">🏭 Produkcja</li>
+          <li>
+            <RouterLink to="/production" class="nav-link" @click="closeMobileMenu">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              <span>Dashboard Produkcji</span>
+            </RouterLink>
+          </li>
+          <li>
+            <RouterLink to="/production/orders" class="nav-link" @click="closeMobileMenu">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+              </svg>
+              <span>Zlecenia</span>
+            </RouterLink>
+          </li>
+          <li>
+            <RouterLink to="/production/issues" class="nav-link" @click="closeMobileMenu">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span>Problemy</span>
+            </RouterLink>
+          </li>
+        </template>
         
-        <li class="nav-section-title">📦 Magazyn</li>
-        <li>
-          <RouterLink to="/warehouse" class="nav-link" @click="closeMobileMenu">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
-            </svg>
-            <span>Dostawy</span>
-          </RouterLink>
-        </li>
-        <li>
+        <!-- Warehouse Panel -->
+        <template v-if="canAccessWarehouse">
+          <li class="nav-section-title">📦 Magazyn</li>
+          <li>
+            <RouterLink to="/warehouse" class="nav-link" @click="closeMobileMenu">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+              <span>Dostawy</span>
+            </RouterLink>
+          </li>
+        </template>
+        <li v-if="canAccessWarehouse">
           <RouterLink to="/materials" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -173,25 +186,28 @@ const closeMobileMenu = () => {
           </RouterLink>
         </li>
         
-        <li class="nav-section-title">⚙️ Administracja</li>
-        <li>
-          <RouterLink to="/admin" class="nav-link" @click="closeMobileMenu">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m8.66-14.66l-4.24 4.24m-4.24 4.24l-4.24 4.24m16.97-1.41l-6-1.73m-6-1.73l-6-1.73m1.41 16.97l1.73-6m1.73-6l1.73-6"/>
-            </svg>
-            <span>Panel Admina</span>
-          </RouterLink>
-        </li>
-        <li>
-          <RouterLink to="/admin/windows" class="nav-link" @click="closeMobileMenu">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
-              <line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/>
-            </svg>
-            <span>Zarządzanie oknami</span>
-          </RouterLink>
-        </li>
+        <!-- Admin Panel -->
+        <template v-if="canAccessAdmin">
+          <li class="nav-section-title">⚙️ Administracja</li>
+          <li>
+            <RouterLink to="/admin" class="nav-link" @click="closeMobileMenu">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m8.66-14.66l-4.24 4.24m-4.24 4.24l-4.24 4.24m16.97-1.41l-6-1.73m-6-1.73l-6-1.73m1.41 16.97l1.73-6m1.73-6l1.73-6"/>
+              </svg>
+              <span>Panel Admina</span>
+            </RouterLink>
+          </li>
+          <li>
+            <RouterLink to="/admin/windows" class="nav-link" @click="closeMobileMenu">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
+                <line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/>
+              </svg>
+              <span>Zarządzanie oknami</span>
+            </RouterLink>
+          </li>
+        </template>
       </ul>
 
       <div class="sidebar-footer" v-if="user">
@@ -221,6 +237,10 @@ const closeMobileMenu = () => {
         </div>
       </footer>
     </main>
+
+    <!-- Global Components -->
+    <ToastContainer />
+    <ConfirmDialog ref="confirmDialogRef" />
   </div>
 </template>
 

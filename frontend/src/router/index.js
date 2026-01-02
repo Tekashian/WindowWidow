@@ -57,57 +57,57 @@ const router = createRouter({
       path: '/production',
       name: 'production-dashboard',
       component: () => import('../views/production/ProductionDashboard.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresRole: ['production', 'admin'] }
     },
     {
       path: '/production/orders',
       name: 'production-orders-list',
       component: () => import('../views/production/ProductionOrdersList.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresRole: ['production', 'admin'] }
     },
     {
       path: '/production/orders/:id',
       name: 'production-order-details',
       component: () => import('../views/production/ProductionOrderDetails.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresRole: ['production', 'admin'] }
     },
     {
       path: '/production/issues',
       name: 'production-issues',
       component: () => import('../views/production/ProductionIssues.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresRole: ['production', 'admin'] }
     },
     // Warehouse Panel Routes
     {
       path: '/warehouse',
       name: 'warehouse-dashboard',
       component: () => import('../views/warehouse/WarehouseDashboard.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresRole: ['warehouse', 'admin'] }
     },
     // Admin Panel Routes
     {
       path: '/admin',
       name: 'admin-dashboard',
       component: () => import('../views/admin/AdminDashboard.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresRole: ['admin'] }
     },
     {
       path: '/admin/windows',
       name: 'admin-windows',
       component: () => import('../views/admin/WindowsManagement.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresRole: ['admin'] }
     },
     {
       path: '/admin/windows/new',
       name: 'admin-window-create',
       component: () => import('../views/admin/WindowForm.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresRole: ['admin'] }
     },
     {
       path: '/admin/windows/:id',
       name: 'admin-window-edit',
       component: () => import('../views/admin/WindowForm.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresRole: ['admin'] }
     }
   ]
 })
@@ -119,6 +119,18 @@ router.beforeEach((to, from, next) => {
     next('/login')
   } else if (to.path === '/login' && authStore.isAuthenticated) {
     next('/')
+  } else if (to.meta.requiresRole) {
+    // Check role permissions
+    const requiredRoles = to.meta.requiresRole
+    const userRole = authStore.user?.role
+    
+    if (!userRole || !requiredRoles.includes(userRole)) {
+      // Redirect to home if no permission
+      console.warn(`Access denied to ${to.path}. Required roles: ${requiredRoles.join(', ')}. User role: ${userRole}`)
+      next('/')
+    } else {
+      next()
+    }
   } else {
     next()
   }

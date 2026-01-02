@@ -11,11 +11,44 @@ use Illuminate\Http\JsonResponse;
 
 class MaterialController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $materials = Material::with('stockMovements')
-            ->where('is_active', true)
-            ->get();
+        $query = Material::with('stockMovements');
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('supplier', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by type
+        if ($request->has('type')) {
+            $query->where('type', $request->get('type'));
+        }
+
+        // Filter by active status
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        } else {
+            $query->where('is_active', true);
+        }
+
+        // Filter by low stock
+        if ($request->boolean('low_stock')) {
+            $query->whereColumn('current_stock', '<=', 'min_stock');
+        }
+
+        // Sort
+        $sortBy = $request->get('sort_by', 'name');
+        $sortOrder = $request->get('sort_order', 'asc');
+        $query->orderBy($sortBy, $sortOrder);
+
+        // Paginate
+        $perPage = $request->get('per_page', 15);
+        $materials = $query->paginate($perPage);
         
         return response()->json($materials);
     }
