@@ -14,6 +14,7 @@ use App\Http\Controllers\ProductionOrderController;
 use App\Http\Controllers\ProductionBatchController;
 use App\Http\Controllers\ProductionIssueController;
 use App\Http\Controllers\WarehouseDeliveryController;
+use App\Http\Controllers\Api\ImageUploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -102,4 +103,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('deliveries/{id}/receive', [WarehouseDeliveryController::class, 'receive']);
         Route::post('deliveries/{id}/reject', [WarehouseDeliveryController::class, 'reject']);
     });
+    
+    // Image Upload
+    Route::post('upload/image', [ImageUploadController::class, 'upload']);
+    Route::delete('upload/image', [ImageUploadController::class, 'delete']);
 });

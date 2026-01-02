@@ -168,6 +168,26 @@ const closeMobileMenu = () => {
             <span>Zamówienia</span>
           </RouterLink>
         </li>
+        
+        <li class="nav-section-title">⚙️ Administracja</li>
+        <li>
+          <RouterLink to="/admin" class="nav-link" @click="closeMobileMenu">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m8.66-14.66l-4.24 4.24m-4.24 4.24l-4.24 4.24m16.97-1.41l-6-1.73m-6-1.73l-6-1.73m1.41 16.97l1.73-6m1.73-6l1.73-6"/>
+            </svg>
+            <span>Panel Admina</span>
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/admin/windows" class="nav-link" @click="closeMobileMenu">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
+              <line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/>
+            </svg>
+            <span>Zarządzanie oknami</span>
+          </RouterLink>
+        </li>
       </ul>
 
       <div class="sidebar-footer" v-if="user">

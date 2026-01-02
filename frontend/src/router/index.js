@@ -83,6 +83,31 @@ const router = createRouter({
       name: 'warehouse-dashboard',
       component: () => import('../views/warehouse/WarehouseDashboard.vue'),
       meta: { requiresAuth: true }
+    },
+    // Admin Panel Routes
+    {
+      path: '/admin',
+      name: 'admin-dashboard',
+      component: () => import('../views/admin/AdminDashboard.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/windows',
+      name: 'admin-windows',
+      component: () => import('../views/admin/WindowsManagement.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/windows/new',
+      name: 'admin-window-create',
+      component: () => import('../views/admin/WindowForm.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/windows/:id',
+      name: 'admin-window-edit',
+      component: () => import('../views/admin/WindowForm.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
