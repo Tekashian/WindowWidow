@@ -10,7 +10,7 @@
               <line x1="15" y1="3" x2="15" y2="21"/>
             </svg>
           </div>
-          <h1>Window Factory</h1>
+          <h1>WindowWidow</h1>
         </div>
         <p class="subtitle">Production Management System</p>
       </div>

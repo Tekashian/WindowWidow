@@ -26,7 +26,7 @@ const handleLogout = async () => {
               <line x1="15" y1="3" x2="15" y2="21"/>
             </svg>
           </div>
-          <span class="logo-text">Window Factory</span>
+          <span class="logo-text">WindowWidow</span>
         </div>
         <div class="user-info" v-if="user">
           <div class="user-avatar">{{ user.name.charAt(0) }}</div>
@@ -125,7 +125,7 @@ const handleLogout = async () => {
 
       <footer class="footer" v-if="user">
         <div class="copyright">
-          <p>&copy; 2026 Window Factory - Production Management System</p>
+          <p>&copy; 2026 WindowWidow - Production Management System</p>
           <p class="author">Created by Jakub Łącki | All Rights Reserved</p>
         </div>
       </footer>
