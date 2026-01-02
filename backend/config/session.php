@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'default' => env('SESSION_DRIVER', 'file'),
+    'default' => env('SESSION_DRIVER', 'array'),
     'lifetime' => env('SESSION_LIFETIME', 120),
     'expire_on_close' => false,
     'encrypt' => false,
