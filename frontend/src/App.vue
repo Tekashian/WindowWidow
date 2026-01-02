@@ -124,7 +124,10 @@ const handleLogout = async () => {
       </div>
 
       <footer class="footer" v-if="user">
-        <p>&copy; 2026 Window Factory - Production Management System</p>
+        <div class="copyright">
+          <p>&copy; 2026 Window Factory - Production Management System</p>
+          <p class="author">Created by Jakub Łącki | All Rights Reserved</p>
+        </div>
       </footer>
     </main>
   </div>
@@ -315,6 +318,22 @@ const handleLogout = async () => {
   border-top: 1px solid var(--gray-200);
   color: var(--gray-500);
   font-size: 0.875rem;
+}
+
+.copyright {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.copyright p {
+  margin: 0;
+}
+
+.author {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+  font-weight: 600;
 }
 
 .fade-enter-active,

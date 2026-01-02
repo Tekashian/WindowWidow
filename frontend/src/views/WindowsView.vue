@@ -446,37 +446,3 @@ onMounted(() => {
   }
 }
 </style>
-
-
-.price {
-  font-size: 1.2rem;
-  color: #42b983;
-  margin-top: 1rem;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  max-width: 500px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-</style>

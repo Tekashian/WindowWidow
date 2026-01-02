@@ -36,6 +36,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     // Windows Management
     Route::apiResource('windows', WindowController::class);
+    Route::post('windows/{window}/update-stock', [WindowController::class, 'updateStock']);
     
     // Profiles Management
     Route::apiResource('profiles', ProfileController::class);

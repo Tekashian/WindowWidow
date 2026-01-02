@@ -2,24 +2,47 @@
   <div class="materials-view">
     <div class="page-header">
       <div>
-        <h1>📦 Magazyn Materiałów</h1>
-        <p>Zarządzaj stanami magazynowymi</p>
+        <h1>📦 Magazyn</h1>
+        <p>Zarządzaj stanami magazynowymi materiałów i produktów</p>
       </div>
       <button @click="showAddModal = true" class="btn btn-primary">
         ➕ Dodaj materiał
       </button>
     </div>
 
+    <!-- Tabs -->
+    <div class="tabs">
+      <button 
+        @click="activeTab = 'materials'" 
+        class="tab" 
+        :class="{ active: activeTab === 'materials' }"
+      >
+        📦 Materiały
+      </button>
+      <button 
+        @click="activeTab = 'windows'" 
+        class="tab" 
+        :class="{ active: activeTab === 'windows' }"
+      >
+        🪟 Produkty (Okna)
+      </button>
+    </div>
+
     <!-- Low Stock Alert -->
-    <div v-if="lowStockMaterials.length > 0" class="alert alert-warning">
+    <div v-if="activeTab === 'materials' && lowStockMaterials.length > 0" class="alert alert-warning">
       <strong>⚠️ Uwaga!</strong> {{ lowStockMaterials.length }} materiałów ma niski stan magazynowy
+    </div>
+
+    <div v-if="activeTab === 'windows' && lowStockWindows.length > 0" class="alert alert-warning">
+      <strong>⚠️ Uwaga!</strong> {{ lowStockWindows.length }} produktów ma niski stan magazynowy
     </div>
 
     <div v-if="loading" class="loading">
       <div class="spinner"></div>
     </div>
 
-    <div v-else class="materials-grid">
+    <!-- Materials Tab -->
+    <div v-if="activeTab === 'materials'" class="materials-grid">
       <div v-for="material in materials" :key="material.id" class="material-card card">
         <div class="material-header">
           <div class="material-type-badge" :class="`type-${material.type}`">
@@ -54,6 +77,47 @@
           <div class="actions">
             <button @click="openStockModal(material, 'add')" class="btn btn-success btn-icon" title="Dodaj">➕</button>
             <button @click="openStockModal(material, 'remove')" class="btn btn-danger btn-icon" title="Usuń">➖</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Windows Tab -->
+    <div v-if="activeTab === 'windows'" class="materials-grid">
+      <div v-for="window in windows" :key="window.id" class="material-card card window-card">
+        <div class="material-header">
+          <div class="window-type-badge">
+            {{ window.type }}
+          </div>
+          <div v-if="window.stock_quantity <= window.min_stock_level" class="low-stock-badge">
+            ⚠️ Niski stan
+          </div>
+        </div>
+
+        <h3>{{ window.name }}</h3>
+        <p class="supplier">📐 {{ window.width }} × {{ window.height }} mm</p>
+
+        <div class="stock-info">
+          <div class="stock-bar-container">
+            <div 
+              class="stock-bar" 
+              :style="{ 
+                width: getWindowStockPercentage(window) + '%',
+                background: getWindowStockColor(window)
+              }"
+            ></div>
+          </div>
+          <div class="stock-numbers">
+            <span class="current-stock">{{ window.stock_quantity }} szt.</span>
+            <span class="min-stock">Min: {{ window.min_stock_level }}</span>
+          </div>
+        </div>
+
+        <div class="material-footer">
+          <div class="price">{{ window.price }} zł</div>
+          <div class="actions">
+            <button @click="openWindowStockModal(window, 'add')" class="btn btn-success btn-icon" title="Przyjęcie">➕</button>
+            <button @click="openWindowStockModal(window, 'subtract')" class="btn btn-danger btn-icon" title="Wydanie">➖</button>
           </div>
         </div>
       </div>
@@ -108,18 +172,67 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Window Stock Modal -->
+    <Transition name="fade">
+      <div v-if="showWindowStockModal" class="modal-overlay" @click.self="closeWindowStockModal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>{{ windowStockAction === 'add' ? '➕ Przyjęcie' : '➖ Wydanie' }} produktu</h2>
+          </div>
+          <div class="modal-body">
+            <h3>{{ selectedWindow?.name }}</h3>
+            <p>Aktualny stan: {{ selectedWindow?.stock_quantity }} szt.</p>
+
+            <form @submit.prevent="handleWindowStockChange">
+              <div class="form-group">
+                <label>Ilość (szt.)</label>
+                <input 
+                  v-model.number="windowStockForm.quantity" 
+                  type="number" 
+                  class="form-control" 
+                  required
+                  min="1"
+                />
+              </div>
+
+              <div v-if="error" class="alert alert-error">
+                {{ error }}
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" @click="closeWindowStockModal" class="btn btn-secondary">Anuluj</button>
+                <button type="submit" class="btn" :class="windowStockAction === 'add' ? 'btn-success' : 'btn-danger'">
+                  {{ windowStockAction === 'add' ? 'Przyjmij' : 'Wydaj' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useMaterialStore } from '../stores'
+import api from '../services/api'
 
 const materialStore = useMaterialStore()
 
+const activeTab = ref('materials')
 const materials = computed(() => materialStore.materials)
 const lowStockMaterials = computed(() => materialStore.lowStockMaterials)
 const loading = computed(() => materialStore.loading)
+
+// Windows state
+const windows = ref([])
+const lowStockWindows = computed(() => windows.value.filter(w => w.stock_quantity <= w.min_stock_level))
+const showWindowStockModal = ref(false)
+const selectedWindow = ref(null)
+const windowStockAction = ref('add')
+const windowStockForm = ref({ quantity: 0 })
 
 const showAddModal = ref(false)
 const showStockModal = ref(false)
@@ -130,6 +243,16 @@ const stockForm = ref({
   reason: ''
 })
 const error = ref(null)
+
+// Load windows
+const loadWindows = async () => {
+  try {
+    const response = await api.get('/windows')
+    windows.value = response.data
+  } catch (err) {
+    console.error('Error loading windows:', err)
+  }
+}
 
 const getTypeLabel = (type) => {
   const labels = {
@@ -182,13 +305,97 @@ const handleStockChange = async () => {
   }
 }
 
+// Windows functions
+const getWindowStockPercentage = (window) => {
+  if (window.min_stock_level === 0) return 100
+  return Math.min((window.stock_quantity / (window.min_stock_level * 2)) * 100, 100)
+}
+
+const getWindowStockColor = (window) => {
+  const percentage = getWindowStockPercentage(window)
+  if (percentage <= 50) return 'var(--gradient-2)'
+  if (percentage <= 100) return 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+  return 'var(--gradient-4)'
+}
+
+const openWindowStockModal = (window, action) => {
+  selectedWindow.value = window
+  windowStockAction.value = action
+  windowStockForm.value = { quantity: 0 }
+  error.value = null
+  showWindowStockModal.value = true
+}
+
+const closeWindowStockModal = () => {
+  showWindowStockModal.value = false
+  selectedWindow.value = null
+}
+
+const handleWindowStockChange = async () => {
+  error.value = null
+  
+  try {
+    await api.post(`/windows/${selectedWindow.value.id}/update-stock`, {
+      quantity: windowStockForm.value.quantity,
+      operation: windowStockAction.value
+    })
+    
+    await loadWindows()
+    closeWindowStockModal()
+  } catch (err) {
+    error.value = err.response?.data?.message || 'Wystąpił błąd'
+  }
+}
+
 onMounted(() => {
   materialStore.fetchMaterials()
   materialStore.fetchLowStock()
+  loadWindows()
 })
 </script>
 
 <style scoped>
+.tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.tab {
+  padding: 1rem 2rem;
+  background: none;
+  border: none;
+  color: var(--gray-600);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+}
+
+.tab:hover {
+  color: var(--primary);
+}
+
+.tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.window-type-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--gradient-primary);
+  color: white;
+}
+
+.window-card {
+  border-left: 4px solid var(--primary);
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;

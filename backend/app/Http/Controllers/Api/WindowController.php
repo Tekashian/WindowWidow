@@ -69,4 +69,29 @@ class WindowController extends Controller
         $window->delete();
         return response()->json(null, 204);
     }
+
+    public function updateStock(Request $request, Window $window): JsonResponse
+    {
+        $validated = $request->validate([
+            'quantity' => 'required|integer',
+            'operation' => 'required|in:add,subtract'
+        ]);
+
+        if ($validated['operation'] === 'add') {
+            $window->stock_quantity += $validated['quantity'];
+        } else {
+            $newQuantity = $window->stock_quantity - $validated['quantity'];
+            if ($newQuantity < 0) {
+                return response()->json([
+                    'message' => 'Insufficient stock quantity'
+                ], 400);
+            }
+            $window->stock_quantity = $newQuantity;
+        }
+
+        $window->save();
+        $window->load(['profile', 'glass']);
+
+        return response()->json($window);
+    }
 }

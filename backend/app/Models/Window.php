@@ -20,7 +20,9 @@ class Window extends Model
         'color',
         'status',
         'description',
-        'is_active'
+        'is_active',
+        'stock_quantity',
+        'min_stock_level'
     ];
 
     protected $casts = [
@@ -28,6 +30,8 @@ class Window extends Model
         'height' => 'integer',
         'price' => 'decimal:2',
         'is_active' => 'boolean',
+        'stock_quantity' => 'integer',
+        'min_stock_level' => 'integer',
     ];
 
     const STATUS_PROJEKT = 'projekt';
