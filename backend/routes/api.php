@@ -21,7 +21,7 @@ use App\Http\Controllers\Api\AuthController;
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::get('/health', function () {
-    return response()->json(['status' => 'ok', 'timestamp' => now()]);
+    return ['status' => 'ok', 'timestamp' => now()->toISOString()];
 });
 
 // Protected routes
