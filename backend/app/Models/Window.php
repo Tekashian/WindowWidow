@@ -22,7 +22,8 @@ class Window extends Model
         'description',
         'is_active',
         'stock_quantity',
-        'min_stock_level'
+        'min_stock_level',
+        'image_url'
     ];
 
     protected $casts = [

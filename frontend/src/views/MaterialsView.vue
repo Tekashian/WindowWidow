@@ -85,6 +85,10 @@
     <!-- Windows Tab -->
     <div v-if="activeTab === 'windows'" class="materials-grid">
       <div v-for="window in windows" :key="window.id" class="material-card card window-card">
+        <div class="window-image" v-if="window.image_url">
+          <img :src="window.image_url" :alt="window.name" />
+        </div>
+        
         <div class="material-header">
           <div class="window-type-badge">
             {{ window.type }}
@@ -96,6 +100,7 @@
 
         <h3>{{ window.name }}</h3>
         <p class="supplier">📐 {{ window.width }} × {{ window.height }} mm</p>
+        <p class="window-description">{{ window.description?.substring(0, 100) }}...</p>
 
         <div class="stock-info">
           <div class="stock-bar-container">
@@ -394,6 +399,41 @@ onMounted(() => {
 
 .window-card {
   border-left: 4px solid var(--primary);
+}
+
+.window-image {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background: var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.window-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.window-type-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #00F5FF 0%, #7C3AED 100%);
+  color: white;
+}
+
+.window-description {
+  font-size: 0.8rem;
+  color: var(--gray-600);
+  line-height: 1.4;
+  margin-bottom: 1rem;
+  min-height: 40px;
 }
 
 .page-header {
