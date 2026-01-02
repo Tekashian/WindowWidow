@@ -8,12 +8,20 @@ use App\Models\ProductionBatch;
 use App\Models\ProductionMaterial;
 use App\Models\ProductionIssue;
 use App\Models\Material;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class ProductionOrderController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     /**
      * Display a listing of production orders
      */
@@ -344,6 +352,9 @@ class ProductionOrderController extends Controller
                 'notes' => 'Order on hold due to critical issue: ' . $validated['description'],
                 'created_by' => Auth::id()
             ]);
+
+            // Notify about critical issue
+            $this->notificationService->notifyProductionCriticalIssue($issue->fresh('productionOrder'));
         }
 
         return response()->json([
@@ -437,6 +448,9 @@ class ProductionOrderController extends Controller
             }
 
             DB::commit();
+
+            // Notify warehouse about shipment
+            $this->notificationService->notifyWarehouseShipment($delivery->fresh(['batch', 'productionOrder']));
 
             return response()->json([
                 'message' => 'Batch shipped to warehouse successfully',

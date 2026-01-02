@@ -3,11 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\WarehouseDelivery;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class WarehouseDeliveryController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     /**
      * Get warehouse deliveries
      */
@@ -96,6 +104,9 @@ class WarehouseDeliveryController extends Controller
             $delivery->update(['notes' => $validated['notes']]);
         }
 
+        // Notify production
+        $this->notificationService->notifyProductionDeliveryReceived($delivery->fresh(['batch', 'productionOrder']));
+
         return response()->json([
             'message' => 'Delivery received successfully',
             'delivery' => $delivery->fresh(['receiver'])
@@ -115,8 +126,12 @@ class WarehouseDeliveryController extends Controller
 
         $delivery->update([
             'status' => 'rejected',
+            'rejection_reason' => $validated['notes'],
             'notes' => $validated['notes']
         ]);
+
+        // Notify production about rejection
+        $this->notificationService->notifyProductionDeliveryRejected($delivery->fresh(['batch', 'productionOrder']));
 
         return response()->json([
             'message' => 'Delivery rejected',

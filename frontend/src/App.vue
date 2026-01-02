@@ -2,6 +2,7 @@
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { computed, ref } from 'vue'
 import { useAuthStore } from './stores/auth'
+import NotificationCenter from './components/NotificationCenter.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -50,7 +51,10 @@ const closeMobileMenu = () => {
           <span class="logo-text">WindowWidow</span>
         </div>
         <div class="user-info" v-if="user">
-          <div class="user-avatar">{{ user.name.charAt(0) }}</div>
+          <div class="flex items-center gap-3">
+            <NotificationCenter />
+            <div class="user-avatar">{{ user.name.charAt(0) }}</div>
+          </div>
           <div class="user-details">
             <div class="user-name">{{ user.name }}</div>
             <div class="user-role">{{ user.role }}</div>

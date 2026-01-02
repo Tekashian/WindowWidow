@@ -18,6 +18,7 @@ class WarehouseDelivery extends Model
         'status',
         'items',
         'notes',
+        'rejection_reason',
         'shipped_by',
         'received_by',
         'shipped_at',

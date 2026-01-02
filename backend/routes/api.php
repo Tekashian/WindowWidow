@@ -15,6 +15,7 @@ use App\Http\Controllers\ProductionBatchController;
 use App\Http\Controllers\ProductionIssueController;
 use App\Http\Controllers\WarehouseDeliveryController;
 use App\Http\Controllers\Api\ImageUploadController;
+use App\Http\Controllers\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -107,4 +108,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Image Upload
     Route::post('upload/image', [ImageUploadController::class, 'upload']);
     Route::delete('upload/image', [ImageUploadController::class, 'delete']);
+    
+    // Notifications
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+        Route::post('/{id}/mark-read', [NotificationController::class, 'markAsRead']);
+        Route::delete('/{id}', [NotificationController::class, 'destroy']);
+        Route::delete('/read/all', [NotificationController::class, 'deleteAllRead']);
+    });
 });
