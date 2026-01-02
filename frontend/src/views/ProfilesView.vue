@@ -5,10 +5,15 @@
       <button @click="showForm = true" class="btn btn-primary">+ Dodaj profil</button>
     </div>
 
-    <div v-if="loading" class="loading">Ładowanie danych...</div>
-    <div v-if="error" class="error">{{ error }}</div>
+    <SearchFilterBar 
+      v-model="searchQuery"
+      @update:modelValue="handleSearch"
+      placeholder="Szukaj profili po nazwie, producencie..."
+    />
 
-    <table v-if="!loading && !error && profiles.length > 0" class="table">
+    <LoadingSpinner v-if="loading" size="large" message="Ładowanie profili..." />
+
+    <table v-if="!loading && profiles.length > 0" class="table">
       <thead>
         <tr>
           <th>Nazwa</th>
@@ -35,6 +40,13 @@
         </tr>
       </tbody>
     </table>
+
+    <PaginationControls
+      v-if="!loading && pagination.last_page > 1"
+      :pagination-data="pagination"
+      @page-change="handlePageChange"
+      @per-page-change="handlePerPageChange"
+    />
 
     <div v-if="showForm" class="modal">
       <div class="modal-content card">
@@ -76,13 +88,31 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import SearchFilterBar from '@/components/SearchFilterBar.vue'
+import PaginationControls from '@/components/PaginationControls.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { profilesAPI } from '../services/api'
+
+const { success, error: showError } = useToast()
+const { confirm } = useConfirm()
 
 const profiles = ref([])
 const loading = ref(false)
-const error = ref(null)
 const showForm = ref(false)
 const editingProfile = ref(null)
+
+const pagination = ref({
+  current_page: 1,
+  last_page: 1,
+  per_page: 15,
+  total: 0,
+  from: 0,
+  to: 0
+})
+const searchQuery = ref('')
+
 const formData = ref({
   name: '',
   manufacturer: '',
@@ -92,30 +122,65 @@ const formData = ref({
   price_per_meter: 0
 })
 
-const loadProfiles = async () => {
+const loadProfiles = async (page = 1) => {
   loading.value = true
-  error.value = null
   try {
-    const response = await profilesAPI.getAll()
-    profiles.value = response.data
+    const params = {
+      page,
+      per_page: pagination.value.per_page,
+      search: searchQuery.value || undefined
+    }
+    const response = await profilesAPI.getAll(params)
+    
+    if (response.data.data) {
+      profiles.value = response.data.data
+      pagination.value = {
+        current_page: response.data.current_page,
+        last_page: response.data.last_page,
+        per_page: response.data.per_page,
+        total: response.data.total,
+        from: response.data.from,
+        to: response.data.to
+      }
+    } else {
+      profiles.value = response.data
+    }
   } catch (err) {
-    error.value = 'Nie udało się załadować danych: ' + err.message
+    showError('Nie udało się załadować profili: ' + err.message)
   } finally {
     loading.value = false
   }
 }
 
+const handleSearch = () => {
+  loadProfiles(1)
+}
+
+const handlePageChange = (page) => {
+  loadProfiles(page)
+}
+
+const handlePerPageChange = (perPage) => {
+  pagination.value.per_page = perPage
+  loadProfiles(1)
+}
+
 const saveProfile = async () => {
+  loading.value = true
   try {
     if (editingProfile.value) {
       await profilesAPI.update(editingProfile.value.id, formData.value)
+      success('Profil został zaktualizowany')
     } else {
       await profilesAPI.create(formData.value)
+      success('Profil został dodany')
     }
     closeForm()
-    loadProfiles()
+    loadProfiles(pagination.value.current_page)
   } catch (err) {
-    error.value = 'Nie udało się zapisać: ' + err.message
+    showError('Nie udało się zapisać: ' + err.message)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -126,13 +191,27 @@ const editProfile = (profile) => {
 }
 
 const deleteProfile = async (id) => {
-  if (confirm('Czy na pewno usunąć ten profil?')) {
-    try {
-      await profilesAPI.delete(id)
-      loadProfiles()
-    } catch (err) {
-      error.value = 'Nie udało się usunąć: ' + err.message
+  try {
+    const confirmed = await confirm({
+      title: 'Usunąć profil?',
+      message: 'Czy na pewno chcesz usunąć ten profil?',
+      confirmText: 'Usuń',
+      cancelText: 'Anuluj',
+      type: 'danger'
+    })
+    
+    if (!confirmed) return
+    
+    loading.value = true
+    await profilesAPI.delete(id)
+    success('Profil został usunięty')
+    loadProfiles(pagination.value.current_page)
+  } catch (err) {
+    if (err !== false) {
+      showError('Nie udało się usunąć: ' + err.message)
     }
+  } finally {
+    loading.value = false
   }
 }
 

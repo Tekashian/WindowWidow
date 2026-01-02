@@ -3,31 +3,20 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\User;
-use App\Models\Profile;
-use App\Models\Glass;
-use App\Models\Window;
-use App\Models\Material;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Użytkownicy
-        $admin = User::create([
-            'name' => 'Admin',
-            'email' => 'admin@okna.pl',
-            'password' => Hash::make('admin123'),
-            'role' => 'admin',
+        $this->call([
+            UsersTableSeeder::class,
+            ProfilesGlassesSeeder::class,
+            MaterialsTableSeeder::class,
+            WindowsTableSeeder::class,
         ]);
+    }
+}
 
-        $magazynier = User::create([
-            'name' => 'Jan Kowalski',
-            'email' => 'magazyn@okna.pl',
-            'password' => Hash::make('magazyn123'),
-            'role' => 'magazynier',
-        ]);
 
         $produkcja = User::create([
             'name' => 'Piotr Nowak',

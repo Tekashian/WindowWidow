@@ -10,13 +10,31 @@
       </button>
     </div>
 
-    <div v-if="loading" class="loading">
-      <div class="spinner"></div>
-    </div>
+    <SearchFilterBar 
+      v-model="searchQuery"
+      @update:modelValue="handleSearch"
+      placeholder="Szukaj okien po nazwie, typie..."
+    >
+      <template #filters>
+        <select v-model="typeFilter" @change="handleSearch" class="form-control">
+          <option value="">Wszystkie typy</option>
+          <option value="Uchylne">Uchylne</option>
+          <option value="Rozwieralne">Rozwieralne</option>
+          <option value="Uchylno-rozwieralne">Uchylno-rozwieralne</option>
+          <option value="Stałe">Stałe</option>
+        </select>
+        
+        <select v-model="sortBy" @change="handleSearch" class="form-control">
+          <option value="created_at">Najnowsze</option>
+          <option value="name">Nazwa A-Z</option>
+          <option value="price">Cena rosnąco</option>
+        </select>
+      </template>
+    </SearchFilterBar>
 
-    <div v-if="error" class="alert alert-error">{{ error }}</div>
+    <LoadingSpinner v-if="loading" size="large" message="Ładowanie okien..." />
 
-    <div v-if="!loading && !error" class="windows-grid">
+    <div v-if="!loading" class="windows-grid">
       <div v-for="window in windows" :key="window.id" class="card window-card">
         <div class="window-header">
           <h3>{{ window.name }}</h3>
@@ -51,6 +69,13 @@
         </div>
       </div>
     </div>
+
+    <PaginationControls
+      v-if="!loading && pagination.last_page > 1"
+      :pagination-data="pagination"
+      @page-change="handlePageChange"
+      @per-page-change="handlePerPageChange"
+    />
 
     <!-- Modal Form -->
     <Transition name="fade">
@@ -133,14 +158,35 @@
             </form>
           </div>
         </div>
-      </div>
-    </Transition>
-  </div>
-</template>
-
-<script setup>
-import { ref, onMounted } from 'vue'
+      <{ useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import SearchFilterBar from '@/components/SearchFilterBar.vue'
+import PaginationControls from '@/components/PaginationControls.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import api from '../services/api'
+
+const { success, error: showError } = useToast()
+const { confirm } = useConfirm()
+
+const windows = ref([])
+const profiles = ref([])
+const glasses = ref([])
+const loading = ref(false)
+const showForm = ref(false)
+const editingWindow = ref(null)
+
+// Pagination & Filters
+const pagination = ref({
+  current_page: 1,
+  last_page: 1,
+  per_page: 15,
+  total: 0,
+  from: 0,
+  to: 0
+})
+const searchQuery = ref('')
+const typeFilter = ref('')
+const sortBy = ref('created_at')
 
 const windows = ref([])
 const profiles = ref([])
@@ -149,17 +195,51 @@ const loading = ref(false)
 const error = ref(null)
 const showForm = ref(false)
 const editingWindow = ref(null)
-const formData = ref({
-  name: '',
-  type: '',
-  width: 1000,
-  height: 1200,
-  profile_id: '',
-  glass_id: '',
-  price: 0,
-  status: 'projekt'
-})
+const formData = ref({page = 1) => {
+  loading.value = true
+  try {
+    const params = {
+      page,
+      per_page: pagination.value.per_page,
+      search: searchQuery.value || undefined,
+      type: typeFilter.value || undefined,
+      sort_by: sortBy.value,
+      sort_order: sortBy.value === 'price' ? 'asc' : 'desc'
+    }
+    
+    const response = await api.get('/windows', { params })
+    
+    if (response.data.data) {
+      windows.value = response.data.data
+      pagination.value = {
+        current_page: response.data.current_page,
+        last_page: response.data.last_page,
+        per_page: response.data.per_page,
+        total: response.data.total,
+        from: response.data.from,
+        to: response.data.to
+      }
+    } else {
+      windows.value = response.data
+    }
+  } catch (err) {
+    showError('Nie udało się załadować okien: ' + err.message)
+  } finally {
+    loading.value = false
+  }
+}
 
+const handleSearch = () => {
+  loadWindows(1)
+}
+
+const handlePageChange = (page) => {
+  loadWindows(page)
+}
+
+const handlePerPageChange = (perPage) => {
+  pagination.value.per_page = perPage
+  loadWindows(1)
 const getStatusLabel = (status) => {
   const labels = {
     projekt: '📝 Projekt',
@@ -168,16 +248,21 @@ const getStatusLabel = (status) => {
     wydane: '📦 Wydane'
   }
   return labels[status] || status
-}
-
-const loadWindows = async () => {
-  loading.value = true
-  error.value = null
+}loading.value = true
   try {
-    const response = await api.get('/windows')
-    windows.value = response.data
+    if (editingWindow.value) {
+      await api.put(`/windows/${editingWindow.value.id}`, formData.value)
+      success('Okno zostało zaktualizowane')
+    } else {
+      await api.post('/windows', formData.value)
+      success('Okno zostało dodane')
+    }
+    closeForm()
+    loadWindows(pagination.value.current_page)
   } catch (err) {
-    error.value = 'Nie udało się załadować danych: ' + err.message
+    showError('Nie udało się zapisać: ' + err.message)
+  } finally {
+    loading.value = falsrr.message
   } finally {
     loading.value = false
   }
@@ -192,13 +277,27 @@ const loadProfiles = async () => {
   }
 }
 
-const loadGlasses = async () => {
-  try {
-    const response = await api.get('/glasses')
-    glasses.value = response.data
+cotry {
+    const confirmed = await confirm({
+      title: 'Usunąć okno?',
+      message: 'Czy na pewno chcesz usunąć to okno? Tej operacji nie można cofnąć.',
+      confirmText: 'Usuń',
+      cancelText: 'Anuluj',
+      type: 'danger'
+    })
+    
+    if (!confirmed) return
+    
+    loading.value = true
+    await api.delete(`/windows/${id}`)
+    success('Okno zostało usunięte')
+    loadWindows(pagination.value.current_page)
   } catch (err) {
-    console.error('Błąd ładowania szkieł:', err)
-  }
+    if (err !== false) {
+      showError('Nie udało się usunąć: ' + err.message)
+    }
+  } finally {
+    loading.value = false
 }
 
 const saveWindow = async () => {

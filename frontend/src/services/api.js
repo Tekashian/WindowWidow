@@ -26,10 +26,33 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   response => response,
   error => {
+    // Handle 401 Unauthorized
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
+    
+    // Handle 403 Forbidden
+    if (error.response?.status === 403) {
+      const message = error.response?.data?.message || 'Brak uprawnień do wykonania tej operacji'
+      console.error('Access Denied:', message)
+    }
+    
+    // Handle 404 Not Found
+    if (error.response?.status === 404) {
+      console.error('Resource not found:', error.config?.url)
+    }
+    
+    // Handle 500 Server Error
+    if (error.response?.status >= 500) {
+      console.error('Server error:', error.response?.status, error.response?.data)
+    }
+    
+    // Handle network errors
+    if (!error.response) {
+      console.error('Network error - no response from server')
+    }
+    
     return Promise.reject(error)
   }
 )
