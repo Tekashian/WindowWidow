@@ -20,13 +20,13 @@ class AuthController extends Controller
         $user = User::where('email', $validated['email'])->first();
 
         if (!$user || !Hash::check($validated['password'], $user->password)) {
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Invalid credentials'
             ], 401);
         }
 
         if (!$user->is_active) {
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Account inactive'
             ], 403);
         }
@@ -37,7 +37,7 @@ class AuthController extends Controller
         // Create new token
         $token = $user->createToken('auth-token', ['*'], now()->addDays(30))->plainTextToken;
 
-        return response()->json([
+        return new JsonResponse([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -53,7 +53,7 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Successfully logged out'
         ]);
     }
@@ -62,7 +62,7 @@ class AuthController extends Controller
     {
         $user = $request->user();
         
-        return response()->json([
+        return new JsonResponse([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
