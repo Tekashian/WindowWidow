@@ -1,0 +1,492 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\ProductionOrder;
+use App\Models\ProductionTimeline;
+use App\Models\ProductionBatch;
+use App\Models\ProductionMaterial;
+use App\Models\ProductionIssue;
+use App\Models\Material;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+
+class ProductionOrderController extends Controller
+{
+    /**
+     * Display a listing of production orders
+     */
+    public function index(Request $request)
+    {
+        $query = ProductionOrder::with(['windows', 'items', 'assignedUser', 'creator'])
+            ->orderBy('created_at', 'desc');
+
+        // Filter by status
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by priority
+        if ($request->has('priority')) {
+            $query->where('priority', $request->priority);
+        }
+
+        // Filter by assigned user
+        if ($request->has('assigned_to')) {
+            $query->where('assigned_to', $request->assigned_to);
+        }
+
+        // Filter delayed orders
+        if ($request->boolean('delayed')) {
+            $query->delayed();
+        }
+
+        // Filter in progress
+        if ($request->boolean('in_progress')) {
+            $query->inProgress();
+        }
+
+        $orders = $query->paginate($request->get('per_page', 15));
+
+        return response()->json($orders);
+    }
+
+    /**
+     * Store a newly created production order
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'window_id' => 'nullable|exists:windows,id',
+            'quantity' => 'required|integer|min:1',
+            'priority' => 'required|in:low,normal,high,urgent',
+            'source_type' => 'required|in:customer_order,stock_replenishment',
+            'source_id' => 'nullable|integer',
+            'estimated_completion_at' => 'nullable|date',
+            'assigned_to' => 'nullable|exists:users,id',
+            'items' => 'nullable|array',
+            'items.*.profile_id' => 'required_with:items|exists:profiles,id',
+            'items.*.glass_id' => 'required_with:items|exists:glasses,id',
+            'items.*.quantity' => 'required_with:items|integer|min:1',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $order = ProductionOrder::create([
+                'window_id' => $validated['window_id'] ?? null,
+                'quantity' => $validated['quantity'],
+                'priority' => $validated['priority'],
+                'status' => 'pending',
+                'source_type' => $validated['source_type'],
+                'source_id' => $validated['source_id'] ?? null,
+                'estimated_completion_at' => $validated['estimated_completion_at'] ?? null,
+                'assigned_to' => $validated['assigned_to'] ?? null,
+                'created_by' => Auth::id(),
+            ]);
+
+            // Create order items if provided
+            if (isset($validated['items'])) {
+                foreach ($validated['items'] as $item) {
+                    $order->items()->create($item);
+                }
+            }
+
+            // Create initial timeline entry
+            ProductionTimeline::create([
+                'production_order_id' => $order->id,
+                'status' => 'pending',
+                'notes' => 'Production order created',
+                'created_by' => Auth::id()
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Production order created successfully',
+                'order' => $order->load(['windows', 'items', 'assignedUser'])
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to create production order',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Display the specified production order
+     */
+    public function show($id)
+    {
+        $order = ProductionOrder::with([
+            'windows',
+            'items.profile',
+            'items.glass',
+            'assignedUser',
+            'creator',
+            'timeline.creator',
+            'batches',
+            'materials.material',
+            'issues.reporter',
+            'deliveries.batch'
+        ])->findOrFail($id);
+
+        return response()->json($order);
+    }
+
+    /**
+     * Update the specified production order
+     */
+    public function update(Request $request, $id)
+    {
+        $order = ProductionOrder::findOrFail($id);
+
+        $validated = $request->validate([
+            'quantity' => 'sometimes|integer|min:1',
+            'priority' => 'sometimes|in:low,normal,high,urgent',
+            'assigned_to' => 'nullable|exists:users,id',
+            'estimated_completion_at' => 'nullable|date',
+        ]);
+
+        $order->update(array_merge($validated, [
+            'updated_by' => Auth::id()
+        ]));
+
+        return response()->json([
+            'message' => 'Production order updated successfully',
+            'order' => $order->load(['windows', 'items', 'assignedUser'])
+        ]);
+    }
+
+    /**
+     * Start production (check and reserve materials)
+     */
+    public function startProduction(Request $request, $id)
+    {
+        $order = ProductionOrder::with('materials')->findOrFail($id);
+
+        if ($order->status !== 'pending') {
+            return response()->json([
+                'message' => 'Only pending orders can be started'
+            ], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Check materials availability
+            $materialsNeeded = $request->validate([
+                'materials' => 'required|array',
+                'materials.*.material_id' => 'required|exists:materials,id',
+                'materials.*.quantity' => 'required|numeric|min:0',
+            ])['materials'];
+
+            $insufficientMaterials = [];
+
+            foreach ($materialsNeeded as $materialData) {
+                $material = Material::find($materialData['material_id']);
+                
+                if ($material->quantity < $materialData['quantity']) {
+                    $insufficientMaterials[] = [
+                        'material' => $material->name,
+                        'required' => $materialData['quantity'],
+                        'available' => $material->quantity
+                    ];
+                }
+            }
+
+            if (!empty($insufficientMaterials)) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Insufficient materials',
+                    'materials' => $insufficientMaterials
+                ], 400);
+            }
+
+            // Reserve materials
+            foreach ($materialsNeeded as $materialData) {
+                $material = Material::find($materialData['material_id']);
+                
+                // Reduce stock
+                $material->decrement('quantity', $materialData['quantity']);
+
+                // Create material reservation
+                ProductionMaterial::create([
+                    'production_order_id' => $order->id,
+                    'material_id' => $material->id,
+                    'quantity_required' => $materialData['quantity'],
+                    'quantity_used' => 0,
+                    'reserved_at' => now()
+                ]);
+            }
+
+            // Update order status
+            $order->update([
+                'status' => 'materials_reserved',
+                'updated_by' => Auth::id()
+            ]);
+
+            // Add timeline entry
+            ProductionTimeline::create([
+                'production_order_id' => $order->id,
+                'status' => 'materials_reserved',
+                'notes' => 'Materials reserved and production ready to start',
+                'created_by' => Auth::id()
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Production started successfully',
+                'order' => $order->fresh(['materials.material'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to start production',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update production status
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        $order = ProductionOrder::findOrFail($id);
+
+        $validated = $request->validate([
+            'status' => 'required|in:pending,materials_check,materials_reserved,in_progress,quality_check,completed,shipped_to_warehouse,delivered,cancelled,on_hold',
+            'notes' => 'nullable|string',
+            'delay_reason' => 'nullable|string',
+            'estimated_completion' => 'nullable|date'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $oldStatus = $order->status;
+
+            // Update order
+            $order->update([
+                'status' => $validated['status'],
+                'updated_by' => Auth::id()
+            ]);
+
+            // Add timeline entry
+            ProductionTimeline::create([
+                'production_order_id' => $order->id,
+                'status' => $validated['status'],
+                'notes' => $validated['notes'] ?? "Status changed from {$oldStatus} to {$validated['status']}",
+                'estimated_completion' => $validated['estimated_completion'] ?? null,
+                'delay_reason' => $validated['delay_reason'] ?? null,
+                'created_by' => Auth::id()
+            ]);
+
+            // If completed, set actual completion date
+            if ($validated['status'] === 'completed' && !$order->actual_completion_at) {
+                $order->update(['actual_completion_at' => now()]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Status updated successfully',
+                'order' => $order->fresh(['timeline.creator'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to update status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Report an issue
+     */
+    public function reportIssue(Request $request, $id)
+    {
+        $order = ProductionOrder::findOrFail($id);
+
+        $validated = $request->validate([
+            'issue_type' => 'required|in:material_shortage,equipment_failure,quality_defect,other',
+            'severity' => 'required|in:low,medium,high,critical',
+            'description' => 'required|string',
+            'impact' => 'required|in:none,minimal,moderate,severe',
+            'estimated_delay_hours' => 'nullable|integer|min:0'
+        ]);
+
+        $issue = ProductionIssue::create(array_merge($validated, [
+            'production_order_id' => $order->id,
+            'status' => 'open',
+            'reported_by' => Auth::id()
+        ]));
+
+        // If critical, put order on hold
+        if ($validated['severity'] === 'critical') {
+            $order->update([
+                'status' => 'on_hold',
+                'updated_by' => Auth::id()
+            ]);
+
+            ProductionTimeline::create([
+                'production_order_id' => $order->id,
+                'status' => 'on_hold',
+                'notes' => 'Order on hold due to critical issue: ' . $validated['description'],
+                'created_by' => Auth::id()
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Issue reported successfully',
+            'issue' => $issue->load('reporter')
+        ], 201);
+    }
+
+    /**
+     * Create production batch
+     */
+    public function createBatch(Request $request, $id)
+    {
+        $order = ProductionOrder::findOrFail($id);
+
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:1|max:' . $order->quantity,
+            'quality_notes' => 'nullable|string'
+        ]);
+
+        $batch = ProductionBatch::create([
+            'production_order_id' => $order->id,
+            'quantity' => $validated['quantity'],
+            'status' => 'in_production',
+            'quality_notes' => $validated['quality_notes'] ?? null,
+            'started_at' => now()
+        ]);
+
+        return response()->json([
+            'message' => 'Batch created successfully',
+            'batch' => $batch
+        ], 201);
+    }
+
+    /**
+     * Ship batch to warehouse
+     */
+    public function shipToWarehouse(Request $request, $id)
+    {
+        $order = ProductionOrder::with('batches')->findOrFail($id);
+
+        $validated = $request->validate([
+            'batch_id' => 'required|exists:production_batches,id',
+            'expected_delivery_date' => 'required|date',
+            'items' => 'required|array',
+            'notes' => 'nullable|string'
+        ]);
+
+        $batch = $order->batches()->findOrFail($validated['batch_id']);
+
+        if ($batch->status !== 'ready') {
+            return response()->json([
+                'message' => 'Only ready batches can be shipped'
+            ], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Create delivery
+            $delivery = $order->deliveries()->create([
+                'batch_id' => $batch->id,
+                'expected_delivery_date' => $validated['expected_delivery_date'],
+                'status' => 'pending',
+                'items' => $validated['items'],
+                'notes' => $validated['notes'] ?? null,
+                'shipped_by' => Auth::id(),
+                'shipped_at' => now()
+            ]);
+
+            // Update batch
+            $batch->update([
+                'status' => 'shipped',
+                'shipped_at' => now()
+            ]);
+
+            // Update order status if all batches shipped
+            $allBatchesShipped = $order->batches()->where('status', '!=', 'shipped')->count() === 0;
+            if ($allBatchesShipped) {
+                $order->update([
+                    'status' => 'shipped_to_warehouse',
+                    'updated_by' => Auth::id()
+                ]);
+
+                ProductionTimeline::create([
+                    'production_order_id' => $order->id,
+                    'status' => 'shipped_to_warehouse',
+                    'notes' => 'All batches shipped to warehouse',
+                    'created_by' => Auth::id()
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Batch shipped to warehouse successfully',
+                'delivery' => $delivery
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to ship batch',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get production statistics
+     */
+    public function statistics()
+    {
+        $stats = [
+            'total_orders' => ProductionOrder::count(),
+            'pending' => ProductionOrder::where('status', 'pending')->count(),
+            'in_progress' => ProductionOrder::inProgress()->count(),
+            'completed' => ProductionOrder::where('status', 'completed')->count(),
+            'delayed' => ProductionOrder::delayed()->count(),
+            'on_hold' => ProductionOrder::where('status', 'on_hold')->count(),
+            'critical_issues' => ProductionIssue::open()->critical()->count(),
+        ];
+
+        return response()->json($stats);
+    }
+
+    /**
+     * Delete production order
+     */
+    public function destroy($id)
+    {
+        $order = ProductionOrder::findOrFail($id);
+
+        if ($order->status !== 'pending') {
+            return response()->json([
+                'message' => 'Only pending orders can be deleted'
+            ], 400);
+        }
+
+        $order->delete();
+
+        return response()->json([
+            'message' => 'Production order deleted successfully'
+        ]);
+    }
+}
