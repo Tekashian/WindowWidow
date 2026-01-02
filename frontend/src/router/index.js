@@ -51,6 +51,31 @@ const router = createRouter({
       name: 'orders',
       component: () => import('../views/OrdersView.vue'),
       meta: { requiresAuth: true }
+    },
+    // Production Panel Routes
+    {
+      path: '/production',
+      name: 'production-dashboard',
+      component: () => import('../views/production/ProductionDashboard.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/production/orders',
+      name: 'production-orders-list',
+      component: () => import('../views/production/ProductionOrdersList.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/production/orders/:id',
+      name: 'production-order-details',
+      component: () => import('../views/production/ProductionOrderDetails.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/production/issues',
+      name: 'production-issues',
+      component: () => import('../views/production/ProductionIssues.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })

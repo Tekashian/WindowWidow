@@ -68,23 +68,48 @@ const closeMobileMenu = () => {
             <span>Dashboard</span>
           </RouterLink>
         </li>
+        
+        <!-- Production Panel -->
+        <li class="nav-section-title">🏭 Produkcja</li>
         <li>
-          <RouterLink to="/materials" class="nav-link" @click="closeMobileMenu">
+          <RouterLink to="/production" class="nav-link" @click="closeMobileMenu">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            <span>Dashboard Produkcji</span>
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/production/orders" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
             </svg>
-            <span>Production Orders</span>
+            <span>Zlecenia</span>
           </RouterLink>
         </li>
+        <li>
+          <RouterLink to="/production/issues" class="nav-link" @click="closeMobileMenu">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span>Problemy</span>
+          </RouterLink>
+        </li>
+        
+        <li class="nav-section-title">📦 Magazyn</li>
         <li>
           <RouterLink to="/materials" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
               <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
             </svg>
-            <span>Warehouse</span>
+            <span>Materiały</span>
           </RouterLink>
         </li>
+        
+        <li class="nav-section-title">🪟 Katalog</li>
         <li>
           <RouterLink to="/windows" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -92,7 +117,7 @@ const closeMobileMenu = () => {
               <line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
               <line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/>
             </svg>
-            <span>Windows</span>
+            <span>Okna</span>
           </RouterLink>
         </li>
         <li>
@@ -100,7 +125,7 @@ const closeMobileMenu = () => {
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
             </svg>
-            <span>Profiles</span>
+            <span>Profile</span>
           </RouterLink>
         </li>
         <li>
@@ -110,16 +135,18 @@ const closeMobileMenu = () => {
               <circle cx="12" cy="12" r="6"/>
               <circle cx="12" cy="12" r="2"/>
             </svg>
-            <span>Glass Types</span>
+            <span>Szkła</span>
           </RouterLink>
         </li>
+        
+        <li class="nav-section-title">📋 Zamówienia</li>
         <li>
           <RouterLink to="/orders" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
               <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 12h6"/><path d="M9 16h6"/>
             </svg>
-            <span>Orders</span>
+            <span>Zamówienia</span>
           </RouterLink>
         </li>
       </ul>
@@ -301,6 +328,22 @@ const closeMobileMenu = () => {
   list-style: none;
   padding: 1rem 0;
   flex: 1;
+}
+
+.nav-section-title {
+  padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 1rem;
+}
+
+.nav-section-title:first-child {
+  margin-top: 0;
+  border-top: none;
 }
 
 .nav-link {
