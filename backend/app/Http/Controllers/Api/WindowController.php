@@ -12,10 +12,9 @@ class WindowController extends Controller
     public function index(): JsonResponse
     {
         $windows = Window::with(['profile', 'glass'])
-            ->where('is_active', true)
             ->get();
         
-        return response()->json($windows);
+        return new JsonResponse($windows);
     }
 
     public function store(Request $request): JsonResponse

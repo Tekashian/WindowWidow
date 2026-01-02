@@ -254,8 +254,11 @@ const loadWindows = async () => {
   try {
     const response = await api.get('/windows')
     windows.value = response.data
+    console.log('Loaded windows:', windows.value)
   } catch (err) {
     console.error('Error loading windows:', err)
+    console.error('Error response:', err.response?.data)
+    error.value = 'Nie udało się załadować produktów: ' + (err.response?.data?.message || err.message)
   }
 }
 
