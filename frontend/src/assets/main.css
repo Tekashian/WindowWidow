@@ -330,13 +330,169 @@ h3 { font-size: 1.5rem; }
 .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
 
+/* Tablet Responsive Styles */
 @media (max-width: 1024px) {
+  .container {
+    padding: 0 1.5rem;
+  }
+
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.75rem; }
+  h3 { font-size: 1.35rem; }
+
+  .card {
+    padding: 1.5rem;
+  }
+
   .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
   .grid-cols-3 { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media (max-width: 640px) {
-  .grid-cols-4, .grid-cols-3, .grid-cols-2 {
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  body {
+    font-size: 0.95rem;
+  }
+
+  .container {
+    padding: 0 1rem;
+  }
+
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+
+  .card {
+    padding: 1.25rem;
+    border-radius: 12px;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+
+  .btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    width: 100%;
+  }
+
+  .btn-icon {
+    padding: 0.75rem;
+  }
+
+  .form-control {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  .grid {
+    gap: 1rem;
+  }
+
+  .grid-cols-4,
+  .grid-cols-3,
+  .grid-cols-2 {
     grid-template-columns: 1fr;
+  }
+
+  .alert {
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .badge {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.7rem;
+  }
+}
+
+/* Small Mobile Responsive */
+@media (max-width: 480px) {
+  .container {
+    padding: 0 0.75rem;
+  }
+
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.35rem; }
+  h3 { font-size: 1.1rem; }
+
+  .card {
+    padding: 1rem;
+    border-radius: 10px;
+  }
+
+  .btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .grid {
+    gap: 0.875rem;
+  }
+
+  .alert {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.8rem;
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border-width: 3px;
+  }
+}
+
+/* Touch-friendly enhancements */
+@media (hover: none) and (pointer: coarse) {
+  .btn {
+    min-height: 44px; /* Apple HIG minimum touch target */
+    padding: 0.875rem 1.5rem;
+  }
+
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-control,
+  .form-select {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  /* Increase touch targets for interactive elements */
+  a, button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* Landscape mobile optimization */
+@media (max-width: 896px) and (max-height: 414px) and (orientation: landscape) {
+  .card {
+    padding: 1rem;
+  }
+
+  .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* High DPI screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

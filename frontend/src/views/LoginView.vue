@@ -273,4 +273,143 @@ const handleLogin = async () => {
   font-family: 'Courier New', monospace;
   font-size: 0.8rem;
 }
+
+/* Tablet Responsive */
+@media (max-width: 1024px) {
+  .login-card {
+    max-width: 420px;
+  }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .login-container {
+    padding: 1.5rem;
+  }
+
+  .login-card {
+    padding: 2rem 1.5rem;
+    border-radius: 16px;
+  }
+
+  .login-header {
+    margin-bottom: 2rem;
+  }
+
+  .logo-icon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .logo-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .login-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .subtitle {
+    font-size: 0.875rem;
+  }
+
+  .btn-block {
+    padding: 0.875rem;
+    font-size: 0.95rem;
+  }
+
+  .demo-credentials {
+    padding: 1.25rem;
+  }
+
+  .demo-item {
+    grid-template-columns: 80px 1fr auto;
+    gap: 0.5rem;
+    padding: 0.65rem;
+  }
+
+  .demo-email,
+  .demo-pass {
+    font-size: 0.75rem;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 1rem;
+  }
+
+  .login-card {
+    padding: 1.75rem 1.25rem;
+  }
+
+  .login-header h1 {
+    font-size: 1.35rem;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+  }
+
+  .logo-icon {
+    width: 45px;
+    height: 45px;
+  }
+
+  .logo-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .form-group label {
+    font-size: 0.9rem;
+  }
+
+  .form-control {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .btn-block {
+    padding: 0.875rem;
+    font-size: 0.9rem;
+    min-height: 48px;
+  }
+
+  .demo-header {
+    font-size: 0.8rem;
+  }
+
+  .demo-item {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+    padding: 0.75rem;
+  }
+
+  .demo-role {
+    font-size: 0.95rem;
+  }
+
+  .demo-email,
+  .demo-pass {
+    font-size: 0.7rem;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  .btn-block {
+    min-height: 52px;
+  }
+
+  .form-control {
+    min-height: 48px;
+  }
+
+  .demo-item {
+    min-height: 60px;
+  }
+}
 </style>

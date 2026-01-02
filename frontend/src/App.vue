@@ -1,22 +1,43 @@
 <script setup>
 import { RouterLink, RouterView, useRouter } from 'vue-router'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useAuthStore } from './stores/auth'
 
 const authStore = useAuthStore()
 const router = useRouter()
 
 const user = computed(() => authStore.user)
+const mobileMenuOpen = ref(false)
 
 const handleLogout = async () => {
   await authStore.logout()
   router.push('/login')
 }
+
+const closeMobileMenu = () => {
+  mobileMenuOpen.value = false
+}
 </script>
 
 <template>
   <div id="app">
-    <nav class="sidebar" v-if="user">
+    <!-- Mobile Menu Toggle -->
+    <button v-if="user" @click="mobileMenuOpen = !mobileMenuOpen" class="mobile-menu-toggle">
+      <svg v-if="!mobileMenuOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+      <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
+    <!-- Mobile Overlay -->
+    <div v-if="mobileMenuOpen" @click="closeMobileMenu" class="mobile-overlay"></div>
+
+    <nav class="sidebar" v-if="user" :class="{ 'mobile-open': mobileMenuOpen }">
       <div class="sidebar-header">
         <div class="logo">
           <div class="logo-icon">
@@ -39,7 +60,7 @@ const handleLogout = async () => {
 
       <ul class="nav-menu">
         <li>
-          <RouterLink to="/" class="nav-link">
+          <RouterLink to="/" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
               <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
@@ -48,7 +69,7 @@ const handleLogout = async () => {
           </RouterLink>
         </li>
         <li>
-          <RouterLink to="/production-orders" class="nav-link">
+          <RouterLink to="/materials" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
             </svg>
@@ -56,7 +77,7 @@ const handleLogout = async () => {
           </RouterLink>
         </li>
         <li>
-          <RouterLink to="/materials" class="nav-link">
+          <RouterLink to="/materials" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
               <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
@@ -65,7 +86,7 @@ const handleLogout = async () => {
           </RouterLink>
         </li>
         <li>
-          <RouterLink to="/windows" class="nav-link">
+          <RouterLink to="/windows" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
               <line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
@@ -75,7 +96,7 @@ const handleLogout = async () => {
           </RouterLink>
         </li>
         <li>
-          <RouterLink to="/profiles" class="nav-link">
+          <RouterLink to="/profiles" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
             </svg>
@@ -83,7 +104,7 @@ const handleLogout = async () => {
           </RouterLink>
         </li>
         <li>
-          <RouterLink to="/glasses" class="nav-link">
+          <RouterLink to="/glasses" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/>
               <circle cx="12" cy="12" r="6"/>
@@ -93,7 +114,7 @@ const handleLogout = async () => {
           </RouterLink>
         </li>
         <li>
-          <RouterLink to="/orders" class="nav-link">
+          <RouterLink to="/orders" class="nav-link" @click="closeMobileMenu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
               <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 12h6"/><path d="M9 16h6"/>
@@ -139,6 +160,48 @@ const handleLogout = async () => {
   min-height: 100vh;
 }
 
+/* Mobile Menu Toggle Button */
+.mobile-menu-toggle {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1001;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: var(--gradient-primary);
+  color: white;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  transition: all var(--transition-base);
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-menu-toggle:active {
+  transform: scale(0.95);
+}
+
+.mobile-menu-toggle svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Mobile Overlay */
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  backdrop-filter: blur(4px);
+}
+
 .sidebar {
   width: 280px;
   background: var(--gradient-dark);
@@ -150,6 +213,7 @@ const handleLogout = async () => {
   height: 100vh;
   overflow-y: auto;
   z-index: 100;
+  transition: transform var(--transition-base);
 }
 
 .sidebar-header {
@@ -173,6 +237,7 @@ const handleLogout = async () => {
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-glow);
+  flex-shrink: 0;
 }
 
 .logo-icon svg {
@@ -208,16 +273,21 @@ const handleLogout = async () => {
   font-weight: 700;
   font-size: 1.1rem;
   color: white;
+  flex-shrink: 0;
 }
 
 .user-details {
   flex: 1;
+  min-width: 0;
 }
 
 .user-name {
   font-weight: 600;
   font-size: 0.95rem;
   color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-role {
@@ -243,6 +313,7 @@ const handleLogout = async () => {
   transition: all var(--transition-base);
   border-left: 3px solid transparent;
   font-weight: 500;
+  min-height: 48px;
 }
 
 .nav-link svg {
@@ -279,6 +350,7 @@ const handleLogout = async () => {
   background: rgba(255, 255, 255, 0.1);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  min-height: 48px;
 }
 
 .btn-logout:hover {
@@ -297,6 +369,7 @@ const handleLogout = async () => {
   display: flex;
   flex-direction: column;
   background: var(--gray-50);
+  min-width: 0;
 }
 
 .main-content.full-width {
@@ -346,39 +419,98 @@ const handleLogout = async () => {
   opacity: 0;
 }
 
+/* Tablet Styles */
+@media (max-width: 1024px) {
+  .content-wrapper {
+    padding: 1.5rem;
+  }
+}
+
+/* Mobile Styles */
 @media (max-width: 768px) {
+  .mobile-menu-toggle {
+    display: flex;
+  }
+
+  .mobile-overlay {
+    display: block;
+  }
+
   .sidebar {
-    width: 70px;
+    transform: translateX(-100%);
+    width: 280px;
+    z-index: 1000;
   }
 
-  .sidebar-header {
-    padding: 1.5rem 0.5rem;
-  }
-
-  .logo-text,
-  .user-info {
-    display: none;
-  }
-
-  .logo {
-    justify-content: center;
-  }
-
-  .nav-link span {
-    display: none;
-  }
-
-  .nav-link {
-    justify-content: center;
-    padding: 1rem 0.5rem;
-  }
-
-  .btn-logout span {
-    display: none;
+  .sidebar.mobile-open {
+    transform: translateX(0);
   }
 
   .main-content {
-    margin-left: 70px;
+    margin-left: 0;
+    padding-top: 72px;
+  }
+
+  .content-wrapper {
+    padding: 1rem;
+  }
+
+  .footer {
+    padding: 1rem;
+    font-size: 0.75rem;
+  }
+
+  .author {
+    font-size: 0.7rem;
+  }
+}
+
+/* Small Mobile Styles */
+@media (max-width: 480px) {
+  .mobile-menu-toggle {
+    width: 44px;
+    height: 44px;
+  }
+
+  .sidebar {
+    width: 260px;
+  }
+
+  .sidebar-header {
+    padding: 1.5rem 1rem;
+  }
+
+  .logo {
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .logo-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .logo-text {
+    font-size: 1.1rem;
+  }
+
+  .user-info {
+    padding: 0.75rem;
+  }
+
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .nav-link {
+    padding: 0.875rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .content-wrapper {
+    padding: 0.75rem;
   }
 }
 </style>

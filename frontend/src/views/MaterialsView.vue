@@ -444,6 +444,19 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.page-header h1 {
+  font-size: 1.75rem;
+  margin: 0;
+}
+
+.page-header p {
+  margin: 0.25rem 0 0 0;
+  color: var(--gray-600);
+  font-size: 0.9rem;
 }
 
 .materials-grid {
@@ -457,10 +470,16 @@ onMounted(() => {
   transition: all 0.3s ease;
 }
 
+.material-card:hover {
+  transform: translateY(-4px);
+}
+
 .material-header {
   display: flex;
   justify-content: space-between;
   margin-bottom: 1rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .material-type-badge {
@@ -468,6 +487,7 @@ onMounted(() => {
   border-radius: 8px;
   font-size: 0.75rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .type-profil { background: #dbeafe; color: #1e40af; }
@@ -614,6 +634,207 @@ onMounted(() => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Tablet Responsive */
+@media (max-width: 1024px) {
+  .materials-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .page-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .modal {
+    max-width: 90%;
+  }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .page-header p {
+    font-size: 0.85rem;
+  }
+
+  .page-header button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    flex: 1;
+    min-width: 140px;
+    font-size: 0.9rem;
+  }
+
+  .materials-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .material-card {
+    padding: 1rem;
+  }
+
+  .material-card:hover {
+    transform: none;
+  }
+
+  .window-image {
+    height: 180px;
+  }
+
+  .material-footer {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .btn-icon {
+    width: 100%;
+    min-height: 44px;
+    font-size: 1.2rem;
+  }
+
+  .modal {
+    max-width: 95%;
+    margin: 1rem;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-header,
+  .modal-body {
+    padding: 1.25rem;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer button {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  .alert {
+    padding: 0.875rem 1rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .page-header h1 {
+    font-size: 1.35rem;
+  }
+
+  .page-header p {
+    font-size: 0.8rem;
+  }
+
+  .tab {
+    min-width: 120px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .material-card h3 {
+    font-size: 1rem;
+  }
+
+  .supplier {
+    font-size: 0.8rem;
+  }
+
+  .window-image {
+    height: 160px;
+  }
+
+  .window-description {
+    font-size: 0.75rem;
+  }
+
+  .stock-numbers {
+    font-size: 0.8rem;
+  }
+
+  .price {
+    font-size: 1rem;
+  }
+
+  .btn-icon {
+    min-height: 48px;
+    font-size: 1.3rem;
+  }
+
+  .form-group label {
+    font-size: 0.9rem;
+  }
+
+  .form-control {
+    font-size: 0.9rem;
+    padding: 0.75rem;
+  }
+
+  textarea.form-control {
+    min-height: 100px;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  .btn {
+    min-height: 48px;
+    font-size: 1rem;
+  }
+
+  .btn-icon {
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  .tab {
+    min-height: 48px;
+  }
+
+  .material-type-badge,
+  .low-stock-badge,
+  .window-type-badge {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8rem;
   }
 }
 </style>
