@@ -158,7 +158,14 @@
             </form>
           </div>
         </div>
-      <{ useToast } from '@/composables/useToast'
+      </div>
+    </Transition>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import SearchFilterBar from '@/components/SearchFilterBar.vue'
 import PaginationControls from '@/components/PaginationControls.vue'
@@ -188,14 +195,28 @@ const searchQuery = ref('')
 const typeFilter = ref('')
 const sortBy = ref('created_at')
 
-const windows = ref([])
-const profiles = ref([])
-const glasses = ref([])
-const loading = ref(false)
-const error = ref(null)
-const showForm = ref(false)
-const editingWindow = ref(null)
-const formData = ref({page = 1) => {
+const formData = ref({
+  name: '',
+  type: '',
+  width: 1000,
+  height: 1200,
+  profile_id: '',
+  glass_id: '',
+  price: 0,
+  status: 'projekt'
+})
+
+const getStatusLabel = (status) => {
+  const labels = {
+    projekt: '📝 Projekt',
+    w_produkcji: '⚙️ W produkcji',
+    gotowe: '✅ Gotowe',
+    wydane: '📦 Wydane'
+  }
+  return labels[status] || status
+}
+
+const loadWindows = async (page = 1) => {
   loading.value = true
   try {
     const params = {
@@ -240,15 +261,28 @@ const handlePageChange = (page) => {
 const handlePerPageChange = (perPage) => {
   pagination.value.per_page = perPage
   loadWindows(1)
-const getStatusLabel = (status) => {
-  const labels = {
-    projekt: '📝 Projekt',
-    w_produkcji: '⚙️ W produkcji',
-    gotowe: '✅ Gotowe',
-    wydane: '📦 Wydane'
+}
+
+const loadProfiles = async () => {
+  try {
+    const response = await api.get('/profiles')
+    profiles.value = response.data
+  } catch (err) {
+    console.error('Błąd ładowania profili:', err)
   }
-  return labels[status] || status
-}loading.value = true
+}
+
+const loadGlasses = async () => {
+  try {
+    const response = await api.get('/glasses')
+    glasses.value = response.data
+  } catch (err) {
+    console.error('Błąd ładowania szkieł:', err)
+  }
+}
+
+const saveWindow = async () => {
+  loading.value = true
   try {
     if (editingWindow.value) {
       await api.put(`/windows/${editingWindow.value.id}`, formData.value)
@@ -262,22 +296,27 @@ const getStatusLabel = (status) => {
   } catch (err) {
     showError('Nie udało się zapisać: ' + err.message)
   } finally {
-    loading.value = falsrr.message
-  } finally {
     loading.value = false
   }
 }
 
-const loadProfiles = async () => {
-  try {
-    const response = await api.get('/profiles')
-    profiles.value = response.data
-  } catch (err) {
-    console.error('Błąd ładowania profili:', err)
+const editWindow = (window) => {
+  editingWindow.value = window
+  formData.value = {
+    name: window.name,
+    type: window.type,
+    width: window.width,
+    height: window.height,
+    profile_id: window.profile_id || '',
+    glass_id: window.glass_id || '',
+    price: window.price,
+    status: window.status || 'projekt'
   }
+  showForm.value = true
 }
 
-cotry {
+const deleteWindow = async (id) => {
+  try {
     const confirmed = await confirm({
       title: 'Usunąć okno?',
       message: 'Czy na pewno chcesz usunąć to okno? Tej operacji nie można cofnąć.',
@@ -298,45 +337,6 @@ cotry {
     }
   } finally {
     loading.value = false
-}
-
-const saveWindow = async () => {
-  try {
-    if (editingWindow.value) {
-      await api.put(`/windows/${editingWindow.value.id}`, formData.value)
-    } else {
-      await api.post('/windows', formData.value)
-    }
-    closeForm()
-    loadWindows()
-  } catch (err) {
-    error.value = 'Nie udało się zapisać: ' + err.message
-  }
-}
-
-const editWindow = (window) => {
-  editingWindow.value = window
-  formData.value = {
-    name: window.name,
-    type: window.type,
-    width: window.width,
-    height: window.height,
-    profile_id: window.profile_id || '',
-    glass_id: window.glass_id || '',
-    price: window.price,
-    status: window.status || 'projekt'
-  }
-  showForm.value = true
-}
-
-const deleteWindow = async (id) => {
-  if (confirm('Czy na pewno usunąć to okno?')) {
-    try {
-      await api.delete(`/windows/${id}`)
-      loadWindows()
-    } catch (err) {
-      error.value = 'Nie udało się usunąć: ' + err.message
-    }
   }
 }
 
