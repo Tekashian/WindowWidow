@@ -76,6 +76,13 @@ const router = createRouter({
       name: 'production-issues',
       component: () => import('../views/production/ProductionIssues.vue'),
       meta: { requiresAuth: true }
+    },
+    // Warehouse Panel Routes
+    {
+      path: '/warehouse',
+      name: 'warehouse-dashboard',
+      component: () => import('../views/warehouse/WarehouseDashboard.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
