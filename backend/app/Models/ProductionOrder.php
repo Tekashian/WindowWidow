@@ -138,6 +138,8 @@ class ProductionOrder extends Model
         $nextNumber = $lastOrder ? (intval(substr($lastOrder->order_number, -4)) + 1) : 1;
         return sprintf('PRD-%s-%04d', $year, $nextNumber);
     }
+
+    public function start(): void
     {
         $this->update([
             'status' => 'w_trakcie',

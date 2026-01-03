@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\WarehouseDelivery;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
 class WarehouseDeliveryController extends Controller

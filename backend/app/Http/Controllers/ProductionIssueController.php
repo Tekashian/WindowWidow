@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProductionIssue;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
 class ProductionIssueController extends Controller

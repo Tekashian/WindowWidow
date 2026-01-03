@@ -4,7 +4,7 @@ const API_BASE = 'http://localhost:8000/api';
 
 // Get token from localStorage
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
