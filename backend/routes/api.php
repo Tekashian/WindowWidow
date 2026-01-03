@@ -95,39 +95,41 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('production-orders-old/{productionOrder}/cancel', [ApiProductionOrderController::class, 'cancel']);
     });
     
-    // New Production System (production and admin roles)
-    Route::prefix('production')->middleware('role:production,admin')->group(function () {
-        // Production helpers
+    // New Production System
+    Route::prefix('production')->group(function () {
+        // Production helpers (available to all authenticated users)
         Route::get('products', [ProductionOrderController::class, 'getProducts']);
         Route::get('company-settings', [ProductionOrderController::class, 'getCompanySettings']);
         
-        // Production Orders
-        Route::get('orders', [ProductionOrderController::class, 'index']);
-        Route::post('orders', [ProductionOrderController::class, 'store']);
-        Route::get('orders/statistics', [ProductionOrderController::class, 'statistics']);
-        Route::get('orders/{id}', [ProductionOrderController::class, 'show']);
-        Route::put('orders/{id}', [ProductionOrderController::class, 'update']);
-        Route::delete('orders/{id}', [ProductionOrderController::class, 'destroy']);
-        Route::post('orders/{id}/start', [ProductionOrderController::class, 'startProduction']);
-        Route::post('orders/{id}/confirm', [ProductionOrderController::class, 'confirmOrder']);
-        Route::post('orders/{id}/report-delay', [ProductionOrderController::class, 'reportDelay']);
-        Route::post('orders/{id}/update-progress', [ProductionOrderController::class, 'updateProgress']);
-        Route::post('orders/{id}/update-status', [ProductionOrderController::class, 'updateStatus']);
-        Route::post('orders/{id}/report-issue', [ProductionOrderController::class, 'reportIssue']);
-        Route::post('orders/{id}/create-batch', [ProductionOrderController::class, 'createBatch']);
-        Route::post('orders/{id}/ship-to-warehouse', [ProductionOrderController::class, 'shipToWarehouse']);
+        // Production Orders (production and admin roles only)
+        Route::middleware('role:production,admin')->group(function () {
+            Route::get('orders', [ProductionOrderController::class, 'index']);
+            Route::post('orders', [ProductionOrderController::class, 'store']);
+            Route::get('orders/statistics', [ProductionOrderController::class, 'statistics']);
+            Route::get('orders/{id}', [ProductionOrderController::class, 'show']);
+            Route::put('orders/{id}', [ProductionOrderController::class, 'update']);
+            Route::delete('orders/{id}', [ProductionOrderController::class, 'destroy']);
+            Route::post('orders/{id}/start', [ProductionOrderController::class, 'startProduction']);
+            Route::post('orders/{id}/confirm', [ProductionOrderController::class, 'confirmOrder']);
+            Route::post('orders/{id}/report-delay', [ProductionOrderController::class, 'reportDelay']);
+            Route::post('orders/{id}/update-progress', [ProductionOrderController::class, 'updateProgress']);
+            Route::post('orders/{id}/update-status', [ProductionOrderController::class, 'updateStatus']);
+            Route::post('orders/{id}/report-issue', [ProductionOrderController::class, 'reportIssue']);
+            Route::post('orders/{id}/create-batch', [ProductionOrderController::class, 'createBatch']);
+            Route::post('orders/{id}/ship-to-warehouse', [ProductionOrderController::class, 'shipToWarehouse']);
         
-        // Production Batches
-        Route::get('batches', [ProductionBatchController::class, 'index']);
-        Route::get('batches/{id}', [ProductionBatchController::class, 'show']);
-        Route::post('batches/{id}/update-status', [ProductionBatchController::class, 'updateStatus']);
+            // Production Batches
+            Route::get('batches', [ProductionBatchController::class, 'index']);
+            Route::get('batches/{id}', [ProductionBatchController::class, 'show']);
+            Route::post('batches/{id}/update-status', [ProductionBatchController::class, 'updateStatus']);
         
-        // Production Issues
-        Route::get('issues', [ProductionIssueController::class, 'index']);
-        Route::get('issues/statistics', [ProductionIssueController::class, 'statistics']);
-        Route::get('issues/{id}', [ProductionIssueController::class, 'show']);
-        Route::post('issues/{id}/update-status', [ProductionIssueController::class, 'updateStatus']);
-        Route::post('issues/{id}/resolve', [ProductionIssueController::class, 'resolve']);
+            // Production Issues
+            Route::get('issues', [ProductionIssueController::class, 'index']);
+            Route::get('issues/statistics', [ProductionIssueController::class, 'statistics']);
+            Route::get('issues/{id}', [ProductionIssueController::class, 'show']);
+            Route::post('issues/{id}/update-status', [ProductionIssueController::class, 'updateStatus']);
+            Route::post('issues/{id}/resolve', [ProductionIssueController::class, 'resolve']);
+        });
     });
     
     // Warehouse System (warehouse and admin roles)
