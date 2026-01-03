@@ -140,11 +140,11 @@ class ProductionOrderController extends Controller
             ]);
 
             // Send notification to production team
-            $this->notificationService->sendToRole(
-                'production',
-                'new_production_order',
-                "New production order #{$order->order_number} requires confirmation",
-                [
+            $this->notificationService->createForRole('production', [
+                'type' => 'production',
+                'title' => '🔔 Nowe zlecenie produkcyjne',
+                'message' => "Zlecenie #{$order->order_number} wymaga potwierdzenia",
+                'data' => [
                     'order_id' => $order->id,
                     'order_number' => $order->order_number,
                     'customer_name' => $order->customer_name,
@@ -152,8 +152,10 @@ class ProductionOrderController extends Controller
                     'quantity' => $order->quantity,
                     'priority' => $order->priority
                 ],
-                $order->priority === 'urgent' ? 'critical' : 'normal'
-            );
+                'priority' => $order->priority === 'urgent' ? 'critical' : 'high',
+                'icon' => '📋',
+                'link' => "/production/orders/{$order->id}"
+            ]);
 
             DB::commit();
 
@@ -577,16 +579,19 @@ class ProductionOrderController extends Controller
             ]);
 
             // Send notification to admin
-            $this->notificationService->sendToRole(
-                'admin',
-                'production_order_confirmed',
-                "Production order {$order->order_number} has been confirmed",
-                [
+            $this->notificationService->createForRole('admin', [
+                'type' => 'production',
+                'title' => '✅ Zlecenie potwierdzone',
+                'message' => "Zlecenie {$order->order_number} zostało potwierdzone przez produkcję",
+                'data' => [
                     'order_id' => $order->id,
                     'order_number' => $order->order_number,
                     'estimated_completion' => $order->estimated_completion_at
-                ]
-            );
+                ],
+                'priority' => 'normal',
+                'icon' => '✅',
+                'link' => "/production/orders/{$order->id}"
+            ]);
 
             return new JsonResponse([
                 'message' => 'Production order confirmed successfully',
@@ -628,18 +633,20 @@ class ProductionOrderController extends Controller
             ]);
 
             // Send notification to admin
-            $this->notificationService->sendToRole(
-                'admin',
-                'production_order_delayed',
-                "Production order {$order->order_number} is delayed",
-                [
+            $this->notificationService->createForRole('admin', [
+                'type' => 'production',
+                'title' => '⚠️ Opóźnienie w produkcji',
+                'message' => "Zlecenie {$order->order_number} jest opóźnione",
+                'data' => [
                     'order_id' => $order->id,
                     'order_number' => $order->order_number,
                     'delay_reason' => $validated['delay_reason'],
                     'revised_completion' => $order->revised_completion_at
                 ],
-                'critical'
-            );
+                'priority' => 'critical',
+                'icon' => '⚠️',
+                'link' => "/production/orders/{$order->id}"
+            ]);
 
             return new JsonResponse([
                 'message' => 'Delay reported successfully',
@@ -682,16 +689,19 @@ class ProductionOrderController extends Controller
             ]);
 
             // Send notification to admin
-            $this->notificationService->sendToRole(
-                'admin',
-                'production_order_updated',
-                "Production order {$order->order_number} status updated",
-                [
+            $this->notificationService->createForRole('admin', [
+                'type' => 'production',
+                'title' => '📊 Aktualizacja statusu',
+                'message' => "Zlecenie {$order->order_number} - status zmieniony na {$validated['status']}",
+                'data' => [
                     'order_id' => $order->id,
                     'order_number' => $order->order_number,
                     'status' => $validated['status']
-                ]
-            );
+                ],
+                'priority' => 'normal',
+                'icon' => '📊',
+                'link' => "/production/orders/{$order->id}"
+            ]);
 
             return new JsonResponse([
                 'message' => 'Production progress updated successfully',
