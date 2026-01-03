@@ -26,7 +26,7 @@ class UsersTableSeeder extends Seeder
             [
                 'name' => 'Jan Kowalski',
                 'password' => Hash::make('prod123'),
-                'role' => 'produkcja'
+                'role' => 'production'
             ]
         );
 
@@ -36,7 +36,7 @@ class UsersTableSeeder extends Seeder
             [
                 'name' => 'Anna Nowak',
                 'password' => Hash::make('mag123'),
-                'role' => 'magazynier'
+                'role' => 'warehouse'
             ]
         );
     }

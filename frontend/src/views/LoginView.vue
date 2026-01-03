@@ -52,20 +52,20 @@
       <div class="demo-credentials">
         <div class="demo-header">Test Accounts</div>
         <div class="demo-list">
-          <div class="demo-item" @click="fillCredentials('admin@okna.pl', 'admin123')">
+          <div class="demo-item" @click="fillCredentials('admin@windowwidow.pl', 'admin123')">
             <span class="demo-role">Admin</span>
-            <span class="demo-email">admin@okna.pl</span>
+            <span class="demo-email">admin@windowwidow.pl</span>
             <span class="demo-pass">admin123</span>
           </div>
-          <div class="demo-item" @click="fillCredentials('magazyn@okna.pl', 'magazyn123')">
+          <div class="demo-item" @click="fillCredentials('magazyn@windowwidow.pl', 'mag123')">
             <span class="demo-role">Warehouse</span>
-            <span class="demo-email">magazyn@okna.pl</span>
-            <span class="demo-pass">magazyn123</span>
+            <span class="demo-email">magazyn@windowwidow.pl</span>
+            <span class="demo-pass">mag123</span>
           </div>
-          <div class="demo-item" @click="fillCredentials('produkcja@okna.pl', 'produkcja123')">
+          <div class="demo-item" @click="fillCredentials('produkcja@windowwidow.pl', 'prod123')">
             <span class="demo-role">Production</span>
-            <span class="demo-email">produkcja@okna.pl</span>
-            <span class="demo-pass">produkcja123</span>
+            <span class="demo-email">produkcja@windowwidow.pl</span>
+            <span class="demo-pass">prod123</span>
           </div>
         </div>
       </div>
