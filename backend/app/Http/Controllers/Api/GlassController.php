@@ -43,7 +43,7 @@ class GlassController extends Controller
             $glasses = $query->get();
         }
         
-        return response()->json($glasses);
+        return new JsonResponse($glasses);
     }
 
     public function store(Request $request): JsonResponse
@@ -59,12 +59,12 @@ class GlassController extends Controller
         ]);
 
         $glass = Glass::create($validated);
-        return response()->json($glass, 201);
+        return new JsonResponse($glass, 201);
     }
 
     public function show(Glass $glass): JsonResponse
     {
-        return response()->json($glass);
+        return new JsonResponse($glass);
     }
 
     public function update(Request $request, Glass $glass): JsonResponse
@@ -80,12 +80,12 @@ class GlassController extends Controller
         ]);
 
         $glass->update($validated);
-        return response()->json($glass);
+        return new JsonResponse($glass);
     }
 
     public function destroy(Glass $glass): JsonResponse
     {
         $glass->delete();
-        return response()->json(null, 204);
+        return new JsonResponse(null, 204);
     }
 }

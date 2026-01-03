@@ -1,72 +1,45 @@
 <template>
-  <div class="relative">
+  <div class="notification-center">
     <!-- Notification Bell -->
-    <button
-      @click="togglePanel"
-      class="relative p-2 text-gray-400 hover:text-cyan-400 transition-colors"
-      :class="{ 'text-cyan-400': showPanel }"
-    >
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <button @click="togglePanel" :class="['bell-btn', { 'bell-active': showPanel }]">
+      <svg class="bell-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
       </svg>
       
       <!-- Unread Badge -->
-      <span
-        v-if="unreadCount > 0"
-        class="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse"
-      >
+      <span v-if="unreadCount > 0" class="unread-badge">
         {{ unreadCount > 9 ? '9+' : unreadCount }}
       </span>
     </button>
 
     <!-- Notifications Panel -->
-    <transition
-      enter-active-class="transition ease-out duration-200"
-      enter-from-class="opacity-0 translate-y-1"
-      enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition ease-in duration-150"
-      leave-from-class="opacity-100 translate-y-0"
-      leave-to-class="opacity-0 translate-y-1"
-    >
-      <div
-        v-if="showPanel"
-        v-click-outside="closePanel"
-        class="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden"
-      >
+    <transition name="panel">
+      <div v-if="showPanel" ref="panelRef" class="notifications-panel">
         <!-- Header -->
-        <div class="bg-gradient-to-r from-cyan-600 to-purple-600 px-4 py-3 flex items-center justify-between">
-          <h3 class="text-white font-bold">🔔 Powiadomienia</h3>
-          <div class="flex items-center gap-2">
-            <button
-              v-if="unreadCount > 0"
-              @click="markAllRead"
-              class="text-white/80 hover:text-white text-xs transition-colors"
-              title="Oznacz wszystkie jako przeczytane"
-            >
+        <div class="panel-header">
+          <h3 class="panel-title">🔔 Powiadomienia</h3>
+          <div class="panel-actions">
+            <button v-if="unreadCount > 0" @click="markAllRead" class="action-btn" title="Oznacz wszystkie jako przeczytane">
               ✓ Wszystkie
             </button>
-            <button
-              @click="deleteAllReadNotifications"
-              class="text-white/80 hover:text-white text-xs transition-colors"
-              title="Usuń przeczytane"
-            >
+            <button @click="deleteAllReadNotifications" class="action-btn" title="Usuń przeczytane">
               🗑️
             </button>
           </div>
         </div>
 
         <!-- Notifications List -->
-        <div class="max-h-96 overflow-y-auto">
-          <div v-if="loading" class="p-8 text-center text-gray-400">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500"></div>
-            <p class="mt-2">Ładowanie...</p>
+        <div class="notifications-list">
+          <div v-if="loading" class="loading-container">
+            <div class="spinner"></div>
+            <p class="loading-text">Ładowanie...</p>
           </div>
 
-          <div v-else-if="notifications.length === 0" class="p-8 text-center text-gray-400">
-            <svg class="w-16 h-16 mx-auto text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div v-else-if="notifications.length === 0" class="empty-container">
+            <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
             </svg>
-            <p>Brak powiadomień</p>
+            <p class="empty-text">Brak powiadomień</p>
           </div>
 
           <div v-else>
@@ -74,64 +47,36 @@
               v-for="notification in notifications"
               :key="notification.id"
               @click="handleNotificationClick(notification)"
-              :class="[
-                'px-4 py-3 border-b border-gray-700 cursor-pointer transition-colors',
-                notification.read ? 'bg-gray-900/30' : 'bg-cyan-900/10 hover:bg-cyan-900/20'
-              ]"
+              :class="['notification-item', { 'notification-unread': !notification.read }]"
             >
-              <div class="flex items-start gap-3">
+              <div class="notification-content">
                 <!-- Icon -->
-                <div class="text-2xl flex-shrink-0">
-                  {{ notification.icon || '🔔' }}
-                </div>
+                <div class="notification-icon">{{ notification.icon || '🔔' }}</div>
 
                 <!-- Content -->
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-start justify-between gap-2 mb-1">
-                    <h4 class="text-white font-medium text-sm">
-                      {{ notification.title }}
-                    </h4>
-                    <span
-                      v-if="notification.priority === 'critical'"
-                      class="text-red-500 text-xs font-bold flex-shrink-0"
-                    >
+                <div class="notification-body">
+                  <div class="notification-header">
+                    <h4 class="notification-title">{{ notification.title }}</h4>
+                    <span v-if="notification.priority === 'critical'" class="priority-badge">
                       KRYTYCZNE
                     </span>
                   </div>
-                  
-                  <p class="text-gray-400 text-sm mb-2">
-                    {{ notification.message }}
-                  </p>
-                  
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs text-gray-500">
-                      {{ formatTime(notification.created_at) }}
-                    </span>
-                    
-                    <button
-                      @click.stop="deleteNotification(notification.id)"
-                      class="text-gray-500 hover:text-red-400 transition-colors"
-                      title="Usuń"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
-                    </button>
+
+                  <p class="notification-message">{{ notification.message }}</p>
+
+                  <div class="notification-footer">
+                    <span class="notification-time">{{ formatTime(notification.created_at) }}</span>
+                    <span v-if="!notification.read" class="unread-dot"></span>
                   </div>
                 </div>
+
+                <!-- Delete Button -->
+                <button @click.stop="deleteNotification(notification.id)" class="delete-btn" title="Usuń">
+                  ✕
+                </button>
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="bg-gray-900/50 px-4 py-2 text-center">
-          <button
-            @click="closePanel"
-            class="text-gray-400 hover:text-cyan-400 text-sm transition-colors"
-          >
-            Zamknij
-          </button>
         </div>
       </div>
     </transition>
@@ -139,14 +84,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useNotificationStore } from '../stores/notificationStore';
+import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const notificationStore = useNotificationStore();
 
 const showPanel = ref(false);
+const panelRef = ref(null);
 
 const notifications = computed(() => notificationStore.notifications);
 const unreadCount = computed(() => notificationStore.unreadCount);
@@ -154,43 +100,38 @@ const loading = computed(() => notificationStore.loading);
 
 const togglePanel = () => {
   showPanel.value = !showPanel.value;
-  
-  if (showPanel.value) {
-    notificationStore.fetchNotifications({ limit: 20 });
-  }
 };
 
 const closePanel = () => {
   showPanel.value = false;
 };
 
-const markAllRead = async () => {
-  await notificationStore.markAllAsRead();
+const handleNotificationClick = async (notification) => {
+  if (!notification.read) {
+    await notificationStore.markAsRead(notification.id);
+  }
+  
+  if (notification.link) {
+    router.push(notification.link);
+    closePanel();
+  }
 };
 
-const deleteAllReadNotifications = async () => {
-  await notificationStore.deleteAllRead();
+const markAllRead = async () => {
+  await notificationStore.markAllAsRead();
 };
 
 const deleteNotification = async (id) => {
   await notificationStore.deleteNotification(id);
 };
 
-const handleNotificationClick = async (notification) => {
-  // Mark as read
-  if (!notification.read) {
-    await notificationStore.markAsRead(notification.id);
-  }
-
-  // Navigate to link if exists
-  if (notification.link) {
-    closePanel();
-    router.push(notification.link);
-  }
+const deleteAllReadNotifications = async () => {
+  await notificationStore.deleteReadNotifications();
 };
 
-const formatTime = (timestamp) => {
-  const date = new Date(timestamp);
+const formatTime = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
   const now = new Date();
   const diffMs = now - date;
   const diffMins = Math.floor(diffMs / 60000);
@@ -199,39 +140,321 @@ const formatTime = (timestamp) => {
 
   if (diffMins < 1) return 'Teraz';
   if (diffMins < 60) return `${diffMins} min temu`;
-  if (diffHours < 24) return `${diffHours} godz. temu`;
+  if (diffHours < 24) return `${diffHours}h temu`;
   if (diffDays < 7) return `${diffDays} dni temu`;
   
-  return date.toLocaleDateString('pl-PL', { 
-    day: 'numeric', 
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
+  return date.toLocaleDateString('pl-PL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
   });
 };
 
-// Click outside directive
-const vClickOutside = {
-  mounted(el, binding) {
-    el.clickOutsideEvent = (event) => {
-      if (!(el === event.target || el.contains(event.target))) {
-        binding.value();
-      }
-    };
-    document.addEventListener('click', el.clickOutsideEvent);
-  },
-  unmounted(el) {
-    document.removeEventListener('click', el.clickOutsideEvent);
+// Handle click outside
+const handleClickOutside = (event) => {
+  if (panelRef.value && !panelRef.value.contains(event.target) && !event.target.closest('.bell-btn')) {
+    closePanel();
   }
 };
 
-// Start polling on mount
-onMounted(() => {
-  notificationStore.startPolling(30000); // Poll every 30 seconds
+watch(showPanel, (newValue) => {
+  if (newValue) {
+    document.addEventListener('click', handleClickOutside);
+  } else {
+    document.removeEventListener('click', handleClickOutside);
+  }
 });
 
-// Stop polling on unmount
-onUnmounted(() => {
-  notificationStore.stopPolling();
+onMounted(() => {
+  notificationStore.fetchNotifications();
+  
+  // Poll for new notifications every 30 seconds
+  const interval = setInterval(() => {
+    notificationStore.fetchNotifications();
+  }, 30000);
+
+  onUnmounted(() => {
+    clearInterval(interval);
+    document.removeEventListener('click', handleClickOutside);
+  });
 });
 </script>
+
+<style scoped>
+.notification-center {
+  position: relative;
+}
+
+/* Bell Button */
+.bell-btn {
+  position: relative;
+  padding: 0.5rem;
+  color: var(--gray-400);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--transition-base);
+}
+
+.bell-btn:hover,
+.bell-active {
+  color: var(--primary);
+}
+
+.bell-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.unread-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #EF4444;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Panel Transitions */
+.panel-enter-active {
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.panel-leave-active {
+  transition: opacity 150ms ease-in, transform 150ms ease-in;
+}
+
+.panel-enter-from,
+.panel-leave-to {
+  opacity: 0;
+  transform: translateY(0.25rem);
+}
+
+.panel-enter-to,
+.panel-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Notifications Panel */
+.notifications-panel {
+  position: absolute;
+  right: 0;
+  margin-top: 0.5rem;
+  width: 24rem;
+  max-width: calc(100vw - 2rem);
+  background: rgba(31, 41, 55, 1);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+  overflow: hidden;
+}
+
+/* Panel Header */
+.panel-header {
+  background: linear-gradient(90deg, #0891B2, #7C3AED);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-title {
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  color: rgba(255, 255, 255, 0.8);
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color var(--transition-base);
+  padding: 0.25rem 0.5rem;
+}
+
+.action-btn:hover {
+  color: white;
+}
+
+/* Notifications List */
+.notifications-list {
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+/* Loading & Empty States */
+.loading-container,
+.empty-container {
+  padding: 2rem;
+  text-align: center;
+  color: var(--gray-400);
+}
+
+.spinner {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--gray-700);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  margin-top: 0.5rem;
+}
+
+.empty-icon {
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto 0.5rem;
+  color: var(--gray-600);
+}
+
+.empty-text {
+  color: var(--gray-400);
+}
+
+/* Notification Item */
+.notification-item {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--transition-base);
+  background: rgba(17, 24, 39, 0.3);
+}
+
+.notification-unread {
+  background: rgba(6, 182, 212, 0.1);
+}
+
+.notification-unread:hover {
+  background: rgba(6, 182, 212, 0.2);
+}
+
+.notification-item:hover {
+  background: rgba(17, 24, 39, 0.5);
+}
+
+.notification-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.notification-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.notification-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.notification-title {
+  color: white;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.priority-badge {
+  color: #EF4444;
+  font-size: 0.625rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.notification-message {
+  color: var(--gray-300);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+  word-wrap: break-word;
+}
+
+.notification-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.notification-time {
+  color: var(--gray-500);
+  font-size: 0.75rem;
+}
+
+.unread-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--primary);
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  color: var(--gray-500);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  transition: color var(--transition-base);
+  flex-shrink: 0;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.delete-btn:hover {
+  color: #EF4444;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .notifications-panel {
+    width: calc(100vw - 2rem);
+  }
+}
+</style>

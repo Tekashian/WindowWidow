@@ -50,7 +50,7 @@ class MaterialController extends Controller
         $perPage = $request->get('per_page', 15);
         $materials = $query->paginate($perPage);
         
-        return response()->json($materials);
+        return new JsonResponse($materials);
     }
 
     public function store(Request $request): JsonResponse
@@ -67,13 +67,13 @@ class MaterialController extends Controller
 
         $material = Material::create($validated);
 
-        return response()->json($material, 201);
+        return new JsonResponse($material, 201);
     }
 
     public function show(Material $material): JsonResponse
     {
         $material->load('stockMovements.user');
-        return response()->json($material);
+        return new JsonResponse($material);
     }
 
     public function update(Request $request, Material $material): JsonResponse
@@ -90,13 +90,13 @@ class MaterialController extends Controller
 
         $material->update($validated);
 
-        return response()->json($material);
+        return new JsonResponse($material);
     }
 
     public function destroy(Material $material): JsonResponse
     {
         $material->delete();
-        return response()->json(null, 204);
+        return new JsonResponse(null, 204);
     }
 
     public function addStock(Request $request, Material $material): JsonResponse
@@ -109,12 +109,12 @@ class MaterialController extends Controller
         try {
             $material->addStock($validated['quantity'], $validated['reason'] ?? null);
             
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Stan magazynowy zaktualizowany',
                 'material' => $material->fresh(),
             ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new JsonResponse(['error' => $e->getMessage()], 400);
         }
     }
 
@@ -133,12 +133,12 @@ class MaterialController extends Controller
                 event(new LowStockAlert($material));
             }
             
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Stan magazynowy zaktualizowany',
                 'material' => $material->fresh(),
             ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new JsonResponse(['error' => $e->getMessage()], 400);
         }
     }
 
@@ -149,13 +149,13 @@ class MaterialController extends Controller
             ->latest()
             ->paginate(50);
         
-        return response()->json($movements);
+        return new JsonResponse($movements);
     }
 
     public function lowStock(): JsonResponse
     {
         $materials = Material::all()->filter->isLowStock()->values();
         
-        return response()->json($materials);
+        return new JsonResponse($materials);
     }
 }

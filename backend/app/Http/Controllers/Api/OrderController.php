@@ -48,7 +48,7 @@ class OrderController extends Controller
         $perPage = $request->get('per_page', 15);
         $orders = $query->paginate($perPage);
         
-        return response()->json($orders);
+        return new JsonResponse($orders);
     }
 
     public function store(Request $request): JsonResponse
@@ -98,17 +98,17 @@ class OrderController extends Controller
             $order->load(['items.window']);
 
             DB::commit();
-            return response()->json($order, 201);
+            return new JsonResponse($order, 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => 'Failed to create order'], 500);
+            return new JsonResponse(['error' => 'Failed to create order'], 500);
         }
     }
 
     public function show(Order $order): JsonResponse
     {
         $order->load(['items.window']);
-        return response()->json($order);
+        return new JsonResponse($order);
     }
 
     public function update(Request $request, Order $order): JsonResponse
@@ -125,7 +125,7 @@ class OrderController extends Controller
         $order->update($validated);
         $order->load(['items.window']);
 
-        return response()->json($order);
+        return new JsonResponse($order);
     }
 
     public function updateStatus(Request $request, Order $order): JsonResponse
@@ -139,12 +139,12 @@ class OrderController extends Controller
             'completed_at' => $validated['status'] === 'completed' ? now() : null
         ]);
 
-        return response()->json($order);
+        return new JsonResponse($order);
     }
 
     public function destroy(Order $order): JsonResponse
     {
         $order->delete();
-        return response()->json(null, 204);
+        return new JsonResponse(null, 204);
     }
 }

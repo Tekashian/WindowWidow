@@ -1,43 +1,37 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6">
+  <div class="issues-container">
     <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
-        ⚠️ Problemy Produkcyjne
-      </h1>
-      <p class="text-gray-400 mt-2">Monitoruj i rozwiązuj problemy</p>
+    <div class="page-header">
+      <h1 class="page-title">⚠️ Problemy Produkcyjne</h1>
+      <p class="page-subtitle">Monitoruj i rozwiązuj problemy</p>
     </div>
 
     <!-- Statistics -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div class="bg-gray-800/50 backdrop-blur border border-gray-700 rounded-xl p-4">
-        <div class="text-gray-400 text-sm mb-1">Wszystkie</div>
-        <div class="text-2xl font-bold text-white">{{ issues.length }}</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Wszystkie</div>
+        <div class="stat-value">{{ issues.length }}</div>
       </div>
-      <div class="bg-red-900/20 backdrop-blur border border-red-700 rounded-xl p-4 animate-pulse">
-        <div class="text-red-300 text-sm mb-1">Krytyczne</div>
-        <div class="text-2xl font-bold text-red-400">{{ criticalCount }}</div>
+      <div class="stat-card stat-critical">
+        <div class="stat-label">Krytyczne</div>
+        <div class="stat-value">{{ criticalCount }}</div>
       </div>
-      <div class="bg-orange-900/20 backdrop-blur border border-orange-700 rounded-xl p-4">
-        <div class="text-orange-300 text-sm mb-1">Wysokie</div>
-        <div class="text-2xl font-bold text-orange-400">{{ highCount }}</div>
+      <div class="stat-card stat-high">
+        <div class="stat-label">Wysokie</div>
+        <div class="stat-value">{{ highCount }}</div>
       </div>
-      <div class="bg-green-900/20 backdrop-blur border border-green-700 rounded-xl p-4">
-        <div class="text-green-300 text-sm mb-1">Otwarte</div>
-        <div class="text-2xl font-bold text-green-400">{{ openCount }}</div>
+      <div class="stat-card stat-open">
+        <div class="stat-label">Otwarte</div>
+        <div class="stat-value">{{ openCount }}</div>
       </div>
     </div>
 
     <!-- Filters -->
-    <div class="bg-gray-800/50 backdrop-blur border border-gray-700 rounded-xl p-4 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-gray-400 text-sm mb-2">Priorytet</label>
-          <select
-            v-model="filters.severity"
-            @change="applyFilters"
-            class="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2"
-          >
+    <div class="filters-card">
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label class="filter-label">Priorytet</label>
+          <select v-model="filters.severity" @change="applyFilters" class="filter-select">
             <option value="">Wszystkie</option>
             <option value="low">Niski</option>
             <option value="medium">Średni</option>
@@ -46,13 +40,9 @@
           </select>
         </div>
 
-        <div>
-          <label class="block text-gray-400 text-sm mb-2">Status</label>
-          <select
-            v-model="filters.status"
-            @change="applyFilters"
-            class="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2"
-          >
+        <div class="filter-group">
+          <label class="filter-label">Status</label>
+          <select v-model="filters.status" @change="applyFilters" class="filter-select">
             <option value="">Wszystkie</option>
             <option value="open">Otwarte</option>
             <option value="in_progress">W trakcie</option>
@@ -61,14 +51,9 @@
           </select>
         </div>
 
-        <div class="flex items-end gap-2">
-          <label class="flex items-center text-gray-400 hover:text-red-400 cursor-pointer">
-            <input
-              type="checkbox"
-              v-model="filters.critical_only"
-              @change="applyFilters"
-              class="mr-2 rounded bg-gray-900 border-gray-700"
-            />
+        <div class="filter-checkboxes">
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="filters.critical_only" @change="applyFilters" class="filter-checkbox" />
             Tylko krytyczne
           </label>
         </div>
@@ -76,83 +61,60 @@
     </div>
 
     <!-- Issues List -->
-    <div class="space-y-4">
-      <div v-if="loading" class="text-center py-12">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-        <p class="text-gray-400 mt-2">Ładowanie...</p>
+    <div class="issues-list">
+      <div v-if="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p class="loading-text">Ładowanie...</p>
       </div>
 
-      <div v-else-if="error" class="text-center py-12">
-        <div class="text-red-400 mb-2">⚠️ {{ error }}</div>
+      <div v-else-if="error" class="error-state">
+        <div class="error-message">⚠️ {{ error }}</div>
       </div>
 
-      <div v-else-if="filteredIssues.length === 0" class="text-center py-12 text-gray-400">
+      <div v-else-if="filteredIssues.length === 0" class="empty-state">
         Brak problemów
       </div>
 
-      <div
-        v-for="issue in filteredIssues"
-        :key="issue.id"
-        :class="[
-          'bg-gray-800/50 backdrop-blur border rounded-xl p-6 hover:border-cyan-500 transition-all cursor-pointer',
-          issue.severity === 'critical' ? 'border-red-700 animate-pulse-slow' : 'border-gray-700'
-        ]"
-        @click="viewIssueDetails(issue)"
-      >
-        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+      <div v-for="issue in filteredIssues" :key="issue.id" :class="['issue-card', issue.severity === 'critical' ? 'issue-critical' : '']" @click="viewIssueDetails(issue)">
+        <div class="issue-content">
           <!-- Left: Issue Info -->
-          <div class="flex-1">
-            <div class="flex items-center gap-3 mb-3">
-              <span
-                :class="[
-                  'px-3 py-1 rounded-full text-xs font-bold uppercase',
-                  getSeverityClass(issue.severity)
-                ]"
-              >
+          <div class="issue-main">
+            <div class="issue-badges">
+              <span :class="['severity-badge', getSeverityClass(issue.severity)]">
                 {{ getSeverityText(issue.severity) }}
               </span>
-              <span class="text-gray-400 text-sm">{{ getTypeText(issue.issue_type) }}</span>
-              <span
-                :class="[
-                  'px-2 py-1 rounded text-xs',
-                  issue.status === 'resolved' ? 'bg-green-900/50 text-green-300' : 'bg-yellow-900/50 text-yellow-300'
-                ]"
-              >
+              <span class="type-badge">{{ getTypeText(issue.issue_type) }}</span>
+              <span :class="['status-badge', issue.status === 'resolved' ? 'status-resolved' : 'status-pending']">
                 {{ getStatusText(issue.status) }}
               </span>
             </div>
 
-            <h3 class="text-white font-medium mb-2">{{ issue.description }}</h3>
+            <h3 class="issue-title">{{ issue.description }}</h3>
 
-            <div class="text-sm text-gray-400 space-y-1">
-              <div>
+            <div class="issue-details">
+              <div class="detail-item">
                 Wpływ: <span :class="getImpactColor(issue.impact)">{{ getImpactText(issue.impact) }}</span>
               </div>
-              <div v-if="issue.estimated_delay_hours">
-                Szacowane opóźnienie: <span class="text-orange-400">{{ issue.estimated_delay_hours }}h</span>
+              <div v-if="issue.estimated_delay_hours" class="detail-item">
+                Szacowane opóźnienie: <span class="delay-value">{{ issue.estimated_delay_hours }}h</span>
               </div>
-              <div v-if="issue.production_order">
-                Zlecenie: 
-                <span class="text-cyan-400 font-mono">{{ issue.production_order.order_number }}</span>
+              <div v-if="issue.production_order" class="detail-item">
+                Zlecenie: <span class="order-number">{{ issue.production_order.order_number }}</span>
               </div>
             </div>
           </div>
 
           <!-- Right: Actions & Info -->
-          <div class="flex flex-col items-end gap-2">
-            <div class="text-sm text-gray-400 text-right">
+          <div class="issue-actions">
+            <div class="issue-meta">
               <div v-if="issue.reporter">👤 {{ issue.reporter.name }}</div>
               <div>📅 {{ formatDate(issue.created_at) }}</div>
             </div>
 
-            <button
-              v-if="issue.status !== 'resolved'"
-              @click.stop="resolveIssue(issue.id)"
-              class="bg-green-600 hover:bg-green-500 text-white text-sm px-4 py-2 rounded-lg transition-all"
-            >
+            <button v-if="issue.status !== 'resolved'" @click.stop="resolveIssue(issue.id)" class="resolve-btn">
               ✅ Rozwiąż
             </button>
-            <span v-else class="text-green-400 text-sm">
+            <span v-else class="resolved-label">
               ✅ Rozwiązane {{ formatDate(issue.resolved_at) }}
             </span>
           </div>
@@ -204,10 +166,10 @@ const openCount = computed(() => issues.value.filter(i => i.status === 'open' ||
 
 const getSeverityClass = (severity) => {
   const classes = {
-    low: 'bg-gray-700 text-gray-300',
-    medium: 'bg-yellow-900 text-yellow-300',
-    high: 'bg-orange-900 text-orange-300',
-    critical: 'bg-red-900 text-red-300 animate-pulse'
+    low: 'severity-low',
+    medium: 'severity-medium',
+    high: 'severity-high',
+    critical: 'severity-critical'
   };
   return classes[severity] || classes.medium;
 };
@@ -254,10 +216,10 @@ const getImpactText = (impact) => {
 
 const getImpactColor = (impact) => {
   const colors = {
-    none: 'text-gray-400',
-    minimal: 'text-yellow-400',
-    moderate: 'text-orange-400',
-    severe: 'text-red-400'
+    none: 'impact-none',
+    minimal: 'impact-minimal',
+    moderate: 'impact-moderate',
+    severe: 'impact-severe'
   };
   return colors[impact] || colors.moderate;
 };
@@ -296,3 +258,414 @@ onMounted(() => {
   productionStore.fetchIssues();
 });
 </script>
+
+<style scoped>
+.issues-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--darker), var(--dark));
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .issues-container {
+    padding: 1.5rem;
+  }
+}
+
+.page-header {
+  margin-bottom: 1.5rem;
+}
+
+.page-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00F5FF, #7C3AED);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+  color: var(--gray-400);
+  font-size: 0.95rem;
+}
+
+/* Statistics Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  transition: all var(--transition-base);
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--gray-400);
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.stat-critical {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.stat-critical .stat-label {
+  color: #FCA5A5;
+}
+
+.stat-critical .stat-value {
+  color: #F87171;
+}
+
+.stat-high {
+  background: rgba(251, 146, 60, 0.1);
+  border-color: rgba(251, 146, 60, 0.3);
+}
+
+.stat-high .stat-label {
+  color: #FCD34D;
+}
+
+.stat-high .stat-value {
+  color: #FBBF24;
+}
+
+.stat-open {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.stat-open .stat-label {
+  color: #6EE7B7;
+}
+
+.stat-open .stat-value {
+  color: #34D399;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Filters */
+.filters-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .filters-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-label {
+  display: block;
+  color: var(--gray-400);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.filter-select {
+  width: 100%;
+  background: rgba(17, 24, 39, 1);
+  border: 1px solid var(--border);
+  color: white;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  transition: all var(--transition-base);
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.filter-checkboxes {
+  display: flex;
+  align-items: flex-end;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  color: var(--gray-400);
+  cursor: pointer;
+  transition: color var(--transition-base);
+}
+
+.checkbox-label:hover {
+  color: #F87171;
+}
+
+.filter-checkbox {
+  margin-right: 0.5rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 0.25rem;
+  background: rgba(17, 24, 39, 1);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+/* Issues List */
+.issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.loading-state,
+.error-state,
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.spinner {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--gray-700);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  color: var(--gray-400);
+  margin-top: 0.5rem;
+}
+
+.error-message {
+  color: #F87171;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state {
+  color: var(--gray-400);
+}
+
+/* Issue Card */
+.issue-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.issue-card:hover {
+  border-color: var(--primary);
+}
+
+.issue-critical {
+  border-color: rgba(239, 68, 68, 0.5);
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.issue-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .issue-content {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
+
+.issue-main {
+  flex: 1;
+}
+
+.issue-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.severity-badge,
+.type-badge,
+.status-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.severity-low {
+  background: rgba(107, 114, 128, 0.3);
+  color: #D1D5DB;
+}
+
+.severity-medium {
+  background: rgba(234, 179, 8, 0.3);
+  color: #FDE68A;
+}
+
+.severity-high {
+  background: rgba(251, 146, 60, 0.3);
+  color: #FDBA74;
+}
+
+.severity-critical {
+  background: rgba(239, 68, 68, 0.3);
+  color: #FCA5A5;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.type-badge {
+  color: var(--gray-400);
+  font-size: 0.875rem;
+  font-weight: 400;
+  padding: 0;
+}
+
+.status-resolved {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6EE7B7;
+}
+
+.status-pending {
+  background: rgba(234, 179, 8, 0.2);
+  color: #FDE68A;
+}
+
+.issue-title {
+  color: white;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.issue-details {
+  font-size: 0.875rem;
+  color: var(--gray-400);
+}
+
+.detail-item {
+  margin-bottom: 0.25rem;
+}
+
+.impact-none {
+  color: var(--gray-400);
+}
+
+.impact-minimal {
+  color: #FDE68A;
+}
+
+.impact-moderate {
+  color: #FBBF24;
+}
+
+.impact-severe {
+  color: #F87171;
+}
+
+.delay-value {
+  color: #FBBF24;
+}
+
+.order-number {
+  color: var(--primary);
+  font-family: 'Courier New', monospace;
+}
+
+/* Issue Actions */
+.issue-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.issue-meta {
+  font-size: 0.875rem;
+  color: var(--gray-400);
+  text-align: right;
+}
+
+.issue-meta > div {
+  margin-bottom: 0.25rem;
+}
+
+.resolve-btn {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #10B981, #059669);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.resolve-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.resolved-label {
+  color: #34D399;
+  font-size: 0.875rem;
+}
+</style>

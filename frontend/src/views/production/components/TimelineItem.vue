@@ -1,23 +1,15 @@
 <template>
-  <div class="space-y-4">
-    <div v-for="(entry, index) in timeline" :key="entry.id" class="relative">
+  <div class="timeline-container">
+    <div v-for="(entry, index) in timeline" :key="entry.id" class="timeline-item">
       <!-- Timeline Line -->
-      <div
-        v-if="index < timeline.length - 1"
-        class="absolute left-4 top-12 bottom-0 w-0.5 bg-gradient-to-b from-cyan-500 to-purple-500"
-      ></div>
+      <div v-if="index < timeline.length - 1" class="timeline-line"></div>
 
       <!-- Timeline Item -->
-      <div class="flex gap-4">
+      <div class="timeline-content">
         <!-- Icon Circle -->
-        <div class="relative z-10 flex-shrink-0">
-          <div
-            :class="[
-              'w-8 h-8 rounded-full flex items-center justify-center',
-              getStatusColor(entry.status)
-            ]"
-          >
-            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+        <div class="timeline-icon-wrapper">
+          <div :class="['timeline-icon', getStatusColor(entry.status)]">
+            <svg class="icon-svg" fill="currentColor" viewBox="0 0 20 20">
               <path
                 v-if="entry.status === 'completed'"
                 d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -35,48 +27,38 @@
         </div>
 
         <!-- Content Card -->
-        <div class="flex-1 bg-gray-800/50 border border-gray-700 rounded-lg p-4 hover:border-cyan-500/50 transition-all">
-          <div class="flex justify-between items-start mb-2">
-            <div>
+        <div class="timeline-card">
+          <div class="card-header">
+            <div class="header-left">
               <StatusBadge :status="entry.status" />
-              <div v-if="entry.delay_reason" class="mt-2 text-orange-400 text-sm">
+              <div v-if="entry.delay_reason" class="delay-reason">
                 ⏰ Opóźnienie: {{ entry.delay_reason }}
               </div>
             </div>
-            <div class="text-right text-sm">
-              <div class="text-gray-400">
-                {{ formatDateTime(entry.created_at) }}
-              </div>
-              <div v-if="entry.creator" class="text-cyan-400 mt-1">
-                👤 {{ entry.creator.name }}
-              </div>
+            <div class="header-right">
+              <div class="meta-date">{{ formatDateTime(entry.created_at) }}</div>
+              <div v-if="entry.creator" class="meta-creator">👤 {{ entry.creator.name }}</div>
             </div>
           </div>
 
-          <p v-if="entry.notes" class="text-gray-300 text-sm mb-2">
-            {{ entry.notes }}
-          </p>
+          <p v-if="entry.notes" class="card-notes">{{ entry.notes }}</p>
 
-          <div v-if="entry.estimated_completion" class="text-sm text-gray-400">
+          <div v-if="entry.estimated_completion" class="card-completion">
             📅 Szacowany termin: {{ formatDateTime(entry.estimated_completion) }}
           </div>
 
           <!-- Issues -->
-          <div v-if="entry.issues && entry.issues.length > 0" class="mt-3 space-y-2">
-            <div
-              v-for="(issue, idx) in entry.issues"
-              :key="idx"
-              class="bg-red-900/20 border border-red-700/50 rounded p-2 text-sm"
-            >
-              <div class="text-red-400 font-medium">⚠️ Problem: {{ issue.type }}</div>
-              <div class="text-gray-300">{{ issue.description }}</div>
+          <div v-if="entry.issues && entry.issues.length > 0" class="issues-list">
+            <div v-for="(issue, idx) in entry.issues" :key="idx" class="issue-item">
+              <div class="issue-title">⚠️ Problem: {{ issue.type }}</div>
+              <div class="issue-description">{{ issue.description }}</div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div v-if="timeline.length === 0" class="text-center py-8 text-gray-400">
+    <div v-if="timeline.length === 0" class="empty-timeline">
       Brak wpisów w historii
     </div>
   </div>
@@ -96,16 +78,16 @@ const props = defineProps({
 
 const getStatusColor = (status) => {
   const colors = {
-    pending: 'bg-gray-600',
-    materials_check: 'bg-blue-600',
-    materials_reserved: 'bg-cyan-600',
-    in_progress: 'bg-purple-600',
-    quality_check: 'bg-yellow-600',
-    completed: 'bg-green-600',
-    shipped_to_warehouse: 'bg-teal-600',
-    delivered: 'bg-emerald-600',
-    on_hold: 'bg-orange-600',
-    cancelled: 'bg-red-600'
+    pending: 'icon-gray',
+    materials_check: 'icon-blue',
+    materials_reserved: 'icon-cyan',
+    in_progress: 'icon-purple',
+    quality_check: 'icon-yellow',
+    completed: 'icon-green',
+    shipped_to_warehouse: 'icon-teal',
+    delivered: 'icon-emerald',
+    on_hold: 'icon-orange',
+    cancelled: 'icon-red'
   };
   return colors[status] || colors.pending;
 };
@@ -122,3 +104,178 @@ const formatDateTime = (dateString) => {
   });
 };
 </script>
+
+<style scoped>
+.timeline-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.timeline-item {
+  position: relative;
+}
+
+.timeline-line {
+  position: absolute;
+  left: 1rem;
+  top: 3rem;
+  bottom: -1rem;
+  width: 2px;
+  background: linear-gradient(180deg, #00F5FF, #7C3AED);
+}
+
+.timeline-content {
+  display: flex;
+  gap: 1rem;
+}
+
+.timeline-icon-wrapper {
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.timeline-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-svg {
+  width: 1rem;
+  height: 1rem;
+  color: white;
+}
+
+.icon-gray {
+  background: #6B7280;
+}
+
+.icon-blue {
+  background: #3B82F6;
+}
+
+.icon-cyan {
+  background: #06B6D4;
+}
+
+.icon-purple {
+  background: #7C3AED;
+}
+
+.icon-yellow {
+  background: #EAB308;
+}
+
+.icon-green {
+  background: #10B981;
+}
+
+.icon-teal {
+  background: #14B8A6;
+}
+
+.icon-emerald {
+  background: #059669;
+}
+
+.icon-orange {
+  background: #F59E0B;
+}
+
+.icon-red {
+  background: #EF4444;
+}
+
+.timeline-card {
+  flex: 1;
+  background: rgba(31, 41, 55, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  transition: all var(--transition-base);
+}
+
+.timeline-card:hover {
+  border-color: rgba(0, 245, 255, 0.5);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.header-left {
+  flex: 1;
+}
+
+.delay-reason {
+  margin-top: 0.5rem;
+  color: #FBBF24;
+  font-size: 0.875rem;
+}
+
+.header-right {
+  text-align: right;
+  font-size: 0.875rem;
+}
+
+.meta-date {
+  color: var(--gray-400);
+}
+
+.meta-creator {
+  color: var(--primary);
+  margin-top: 0.25rem;
+}
+
+.card-notes {
+  color: var(--gray-300);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.card-completion {
+  font-size: 0.875rem;
+  color: var(--gray-400);
+}
+
+.issues-list {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.issue-item {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.issue-title {
+  color: #F87171;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.issue-description {
+  color: var(--gray-300);
+}
+
+.empty-timeline {
+  text-align: center;
+  padding: 2rem;
+  color: var(--gray-400);
+}
+</style>

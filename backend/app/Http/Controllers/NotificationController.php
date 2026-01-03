@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Notification;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class NotificationController extends Controller
 {
@@ -42,7 +43,7 @@ class NotificationController extends Controller
         $limit = $request->get('limit', 50);
         $notifications = $query->limit($limit)->get();
 
-        return response()->json([
+        return new JsonResponse([
             'data' => $notifications,
             'unread_count' => $this->notificationService->getUnreadCount($request->user()->id),
         ]);
@@ -55,7 +56,7 @@ class NotificationController extends Controller
     {
         $count = $this->notificationService->getUnreadCount($request->user()->id);
 
-        return response()->json([
+        return new JsonResponse([
             'count' => $count,
         ]);
     }
@@ -70,7 +71,7 @@ class NotificationController extends Controller
 
         $notification->markAsRead();
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Notification marked as read',
             'data' => $notification,
         ]);
@@ -83,7 +84,7 @@ class NotificationController extends Controller
     {
         $count = $this->notificationService->markAllAsRead($request->user()->id);
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'All notifications marked as read',
             'count' => $count,
         ]);
@@ -99,7 +100,7 @@ class NotificationController extends Controller
 
         $notification->delete();
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Notification deleted',
         ]);
     }
@@ -113,7 +114,7 @@ class NotificationController extends Controller
             ->where('read', true)
             ->delete();
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'All read notifications deleted',
             'count' => $count,
         ]);

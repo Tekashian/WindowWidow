@@ -57,7 +57,7 @@ class ProductionOrderController extends Controller
 
         $orders = $query->paginate($request->get('per_page', 15));
 
-        return response()->json($orders);
+        return new JsonResponse($orders);
     }
 
     /**
@@ -111,14 +111,14 @@ class ProductionOrderController extends Controller
 
             DB::commit();
 
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Production order created successfully',
                 'order' => $order->load(['windows', 'items', 'assignedUser'])
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Failed to create production order',
                 'error' => $e->getMessage()
             ], 500);
@@ -143,7 +143,7 @@ class ProductionOrderController extends Controller
             'deliveries.batch'
         ])->findOrFail($id);
 
-        return response()->json($order);
+        return new JsonResponse($order);
     }
 
     /**
@@ -164,7 +164,7 @@ class ProductionOrderController extends Controller
             'updated_by' => Auth::id()
         ]));
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Production order updated successfully',
             'order' => $order->load(['windows', 'items', 'assignedUser'])
         ]);
@@ -178,7 +178,7 @@ class ProductionOrderController extends Controller
         $order = ProductionOrder::with('materials')->findOrFail($id);
 
         if ($order->status !== 'pending') {
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Only pending orders can be started'
             ], 400);
         }
@@ -209,7 +209,7 @@ class ProductionOrderController extends Controller
 
             if (!empty($insufficientMaterials)) {
                 DB::rollBack();
-                return response()->json([
+                return new JsonResponse([
                     'message' => 'Insufficient materials',
                     'materials' => $insufficientMaterials
                 ], 400);
@@ -248,14 +248,14 @@ class ProductionOrderController extends Controller
 
             DB::commit();
 
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Production started successfully',
                 'order' => $order->fresh(['materials.material'])
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Failed to start production',
                 'error' => $e->getMessage()
             ], 500);
@@ -304,14 +304,14 @@ class ProductionOrderController extends Controller
 
             DB::commit();
 
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Status updated successfully',
                 'order' => $order->fresh(['timeline.creator'])
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Failed to update status',
                 'error' => $e->getMessage()
             ], 500);
@@ -357,7 +357,7 @@ class ProductionOrderController extends Controller
             $this->notificationService->notifyProductionCriticalIssue($issue->fresh('productionOrder'));
         }
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Issue reported successfully',
             'issue' => $issue->load('reporter')
         ], 201);
@@ -383,7 +383,7 @@ class ProductionOrderController extends Controller
             'started_at' => now()
         ]);
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Batch created successfully',
             'batch' => $batch
         ], 201);
@@ -406,7 +406,7 @@ class ProductionOrderController extends Controller
         $batch = $order->batches()->findOrFail($validated['batch_id']);
 
         if ($batch->status !== 'ready') {
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Only ready batches can be shipped'
             ], 400);
         }
@@ -452,14 +452,14 @@ class ProductionOrderController extends Controller
             // Notify warehouse about shipment
             $this->notificationService->notifyWarehouseShipment($delivery->fresh(['batch', 'productionOrder']));
 
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Batch shipped to warehouse successfully',
                 'delivery' => $delivery
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Failed to ship batch',
                 'error' => $e->getMessage()
             ], 500);
@@ -481,7 +481,7 @@ class ProductionOrderController extends Controller
             'critical_issues' => ProductionIssue::open()->critical()->count(),
         ];
 
-        return response()->json($stats);
+        return new JsonResponse($stats);
     }
 
     /**
@@ -492,14 +492,14 @@ class ProductionOrderController extends Controller
         $order = ProductionOrder::findOrFail($id);
 
         if ($order->status !== 'pending') {
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Only pending orders can be deleted'
             ], 400);
         }
 
         $order->delete();
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Production order deleted successfully'
         ]);
     }

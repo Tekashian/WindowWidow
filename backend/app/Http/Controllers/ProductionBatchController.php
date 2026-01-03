@@ -25,7 +25,7 @@ class ProductionBatchController extends Controller
 
         $batches = $query->orderBy('created_at', 'desc')->get();
 
-        return response()->json($batches);
+        return new JsonResponse($batches);
     }
 
     /**
@@ -57,7 +57,7 @@ class ProductionBatchController extends Controller
 
         $batch->update($updateData);
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Batch status updated successfully',
             'batch' => $batch
         ]);
@@ -74,6 +74,6 @@ class ProductionBatchController extends Controller
             'deliveries.receiver'
         ])->findOrFail($id);
 
-        return response()->json($batch);
+        return new JsonResponse($batch);
     }
 }

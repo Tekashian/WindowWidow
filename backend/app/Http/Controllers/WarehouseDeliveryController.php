@@ -71,7 +71,7 @@ class WarehouseDeliveryController extends Controller
         $perPage = $request->get('per_page', 15);
         $deliveries = $query->paginate($perPage);
 
-        return response()->json($deliveries);
+        return new JsonResponse($deliveries);
     }
 
     /**
@@ -86,7 +86,7 @@ class WarehouseDeliveryController extends Controller
             'receiver'
         ])->findOrFail($id);
 
-        return response()->json($delivery);
+        return new JsonResponse($delivery);
     }
 
     /**
@@ -97,14 +97,14 @@ class WarehouseDeliveryController extends Controller
         $delivery = WarehouseDelivery::findOrFail($id);
 
         if ($delivery->status !== 'pending') {
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Only pending deliveries can be shipped'
             ], 400);
         }
 
         $delivery->ship(Auth::id());
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Delivery shipped successfully',
             'delivery' => $delivery->fresh(['shipper'])
         ]);
@@ -118,7 +118,7 @@ class WarehouseDeliveryController extends Controller
         $delivery = WarehouseDelivery::findOrFail($id);
 
         if ($delivery->status !== 'in_transit') {
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Only in-transit deliveries can be received'
             ], 400);
         }
@@ -136,7 +136,7 @@ class WarehouseDeliveryController extends Controller
         // Notify production
         $this->notificationService->notifyProductionDeliveryReceived($delivery->fresh(['batch', 'productionOrder']));
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Delivery received successfully',
             'delivery' => $delivery->fresh(['receiver'])
         ]);
@@ -162,7 +162,7 @@ class WarehouseDeliveryController extends Controller
         // Notify production about rejection
         $this->notificationService->notifyProductionDeliveryRejected($delivery->fresh(['batch', 'productionOrder']));
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Delivery rejected',
             'delivery' => $delivery
         ]);
@@ -182,6 +182,6 @@ class WarehouseDeliveryController extends Controller
                 ->count()
         ];
 
-        return response()->json($stats);
+        return new JsonResponse($stats);
     }
 }

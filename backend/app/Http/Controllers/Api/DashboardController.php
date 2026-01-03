@@ -19,7 +19,7 @@ class DashboardController extends Controller
     {
         $statistics = $this->service->getStatistics();
         
-        return response()->json($statistics);
+        return new JsonResponse($statistics);
     }
 
     public function exportMaterials()

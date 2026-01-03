@@ -23,7 +23,7 @@ class ProductionOrderController extends Controller
             ->latest()
             ->get();
         
-        return response()->json($orders);
+        return new JsonResponse($orders);
     }
 
     public function store(Request $request): JsonResponse
@@ -40,16 +40,16 @@ class ProductionOrderController extends Controller
         try {
             $productionOrder = $this->service->createProductionOrder($validated);
             
-            return response()->json($productionOrder, 201);
+            return new JsonResponse($productionOrder, 201);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new JsonResponse(['error' => $e->getMessage()], 400);
         }
     }
 
     public function show(ProductionOrder $productionOrder): JsonResponse
     {
         $productionOrder->load(['items.window', 'assignedUser', 'stockMovements.material']);
-        return response()->json($productionOrder);
+        return new JsonResponse($productionOrder);
     }
 
     public function update(Request $request, ProductionOrder $productionOrder): JsonResponse
@@ -62,13 +62,13 @@ class ProductionOrderController extends Controller
 
         $productionOrder->update($validated);
         
-        return response()->json($productionOrder->fresh());
+        return new JsonResponse($productionOrder->fresh());
     }
 
     public function destroy(ProductionOrder $productionOrder): JsonResponse
     {
         $productionOrder->delete();
-        return response()->json(null, 204);
+        return new JsonResponse(null, 204);
     }
 
     public function start(ProductionOrder $productionOrder): JsonResponse
@@ -76,12 +76,12 @@ class ProductionOrderController extends Controller
         try {
             $this->service->startProduction($productionOrder);
             
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Produkcja rozpoczęta',
                 'order' => $productionOrder->fresh(['items.window']),
             ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new JsonResponse(['error' => $e->getMessage()], 400);
         }
     }
 
@@ -90,12 +90,12 @@ class ProductionOrderController extends Controller
         try {
             $this->service->completeProduction($productionOrder);
             
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Produkcja zakończona',
                 'order' => $productionOrder->fresh(['items.window']),
             ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new JsonResponse(['error' => $e->getMessage()], 400);
         }
     }
 
@@ -103,7 +103,7 @@ class ProductionOrderController extends Controller
     {
         $productionOrder->update(['status' => 'anulowane']);
         
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Zlecenie anulowane',
             'order' => $productionOrder->fresh(),
         ]);

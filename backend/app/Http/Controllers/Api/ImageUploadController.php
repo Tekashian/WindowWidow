@@ -30,7 +30,7 @@ class ImageUploadController extends Controller
             // Generate URL
             $url = Storage::url($path);
             
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'message' => 'Image uploaded successfully',
                 'url' => $url,
@@ -38,7 +38,7 @@ class ImageUploadController extends Controller
                 'filename' => $filename
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Failed to upload image: ' . $e->getMessage()
             ], 500);
@@ -63,18 +63,18 @@ class ImageUploadController extends Controller
             if (Storage::disk('public')->exists($path)) {
                 Storage::disk('public')->delete($path);
                 
-                return response()->json([
+                return new JsonResponse([
                     'success' => true,
                     'message' => 'Image deleted successfully'
                 ], 200);
             }
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Image not found'
             ], 404);
         } catch (\Exception $e) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Failed to delete image: ' . $e->getMessage()
             ], 500);

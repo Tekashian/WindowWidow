@@ -43,7 +43,7 @@ class ProfileController extends Controller
             $profiles = $query->get();
         }
         
-        return response()->json($profiles);
+        return new JsonResponse($profiles);
     }
 
     public function store(Request $request): JsonResponse
@@ -59,12 +59,12 @@ class ProfileController extends Controller
         ]);
 
         $profile = Profile::create($validated);
-        return response()->json($profile, 201);
+        return new JsonResponse($profile, 201);
     }
 
     public function show(Profile $profile): JsonResponse
     {
-        return response()->json($profile);
+        return new JsonResponse($profile);
     }
 
     public function update(Request $request, Profile $profile): JsonResponse
@@ -80,12 +80,12 @@ class ProfileController extends Controller
         ]);
 
         $profile->update($validated);
-        return response()->json($profile);
+        return new JsonResponse($profile);
     }
 
     public function destroy(Profile $profile): JsonResponse
     {
         $profile->delete();
-        return response()->json(null, 204);
+        return new JsonResponse(null, 204);
     }
 }

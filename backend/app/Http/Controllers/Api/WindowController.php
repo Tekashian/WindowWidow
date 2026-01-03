@@ -62,13 +62,13 @@ class WindowController extends Controller
         $window = Window::create($validated);
         $window->load(['profile', 'glass']);
 
-        return response()->json($window, 201);
+        return new JsonResponse($window, 201);
     }
 
     public function show(Window $window): JsonResponse
     {
         $window->load(['profile', 'glass']);
-        return response()->json($window);
+        return new JsonResponse($window);
     }
 
     public function update(Request $request, Window $window): JsonResponse
@@ -88,13 +88,13 @@ class WindowController extends Controller
         $window->update($validated);
         $window->load(['profile', 'glass']);
 
-        return response()->json($window);
+        return new JsonResponse($window);
     }
 
     public function destroy(Window $window): JsonResponse
     {
         $window->delete();
-        return response()->json(null, 204);
+        return new JsonResponse(null, 204);
     }
 
     public function updateStock(Request $request, Window $window): JsonResponse
@@ -109,7 +109,7 @@ class WindowController extends Controller
         } else {
             $newQuantity = $window->stock_quantity - $validated['quantity'];
             if ($newQuantity < 0) {
-                return response()->json([
+                return new JsonResponse([
                     'message' => 'Insufficient stock quantity'
                 ], 400);
             }
@@ -119,6 +119,6 @@ class WindowController extends Controller
         $window->save();
         $window->load(['profile', 'glass']);
 
-        return response()->json($window);
+        return new JsonResponse($window);
     }
 }

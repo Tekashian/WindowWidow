@@ -37,7 +37,7 @@ class ProductionIssueController extends Controller
 
         $issues = $query->orderBy('created_at', 'desc')->get();
 
-        return response()->json($issues);
+        return new JsonResponse($issues);
     }
 
     /**
@@ -51,7 +51,7 @@ class ProductionIssueController extends Controller
             'resolver'
         ])->findOrFail($id);
 
-        return response()->json($issue);
+        return new JsonResponse($issue);
     }
 
     /**
@@ -67,7 +67,7 @@ class ProductionIssueController extends Controller
 
         $issue->update(['status' => $validated['status']]);
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Issue status updated successfully',
             'issue' => $issue
         ]);
@@ -82,7 +82,7 @@ class ProductionIssueController extends Controller
 
         $issue->resolve(Auth::id());
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Issue resolved successfully',
             'issue' => $issue->fresh(['resolver'])
         ]);
@@ -103,6 +103,6 @@ class ProductionIssueController extends Controller
                 ->count()
         ];
 
-        return response()->json($stats);
+        return new JsonResponse($stats);
     }
 }
