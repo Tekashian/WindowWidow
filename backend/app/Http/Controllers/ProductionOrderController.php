@@ -67,13 +67,32 @@ class ProductionOrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'window_id' => 'nullable|exists:windows,id',
+            // Customer information
+            'customer_name' => 'required|string|max:255',
+            'customer_phone' => 'required|string|max:20',
+            'customer_email' => 'nullable|email|max:255',
+            
+            // Delivery information
+            'delivery_address' => 'required|string',
+            'delivery_city' => 'required|string|max:100',
+            'delivery_postal_code' => 'required|string|max:10',
+            'delivery_notes' => 'nullable|string',
+            
+            // Product information
+            'product_type' => 'required|string|max:100',
+            'product_description' => 'required|string',
             'quantity' => 'required|integer|min:1',
+            'product_specifications' => 'nullable|array',
+            
+            // Order details
             'priority' => 'required|in:low,normal,high,urgent',
             'source_type' => 'required|in:customer_order,stock_replenishment',
             'source_id' => 'nullable|integer',
-            'estimated_completion_at' => 'nullable|date',
+            'notes' => 'nullable|string',
             'assigned_to' => 'nullable|exists:users,id',
+            
+            // Legacy fields
+            'window_id' => 'nullable|exists:windows,id',
             'items' => 'nullable|array',
             'items.*.profile_id' => 'required_with:items|exists:profiles,id',
             'items.*.glass_id' => 'required_with:items|exists:glasses,id',
@@ -84,15 +103,34 @@ class ProductionOrderController extends Controller
             DB::beginTransaction();
 
             $order = ProductionOrder::create([
-                'window_id' => $validated['window_id'] ?? null,
+                // Customer info
+                'customer_name' => $validated['customer_name'],
+                'customer_phone' => $validated['customer_phone'],
+                'customer_email' => $validated['customer_email'] ?? null,
+                
+                // Delivery info
+                'delivery_address' => $validated['delivery_address'],
+                'delivery_city' => $validated['delivery_city'],
+                'delivery_postal_code' => $validated['delivery_postal_code'],
+                'delivery_notes' => $validated['delivery_notes'] ?? null,
+                
+                // Product info
+                'product_type' => $validated['product_type'],
+                'product_description' => $validated['product_description'],
                 'quantity' => $validated['quantity'],
+                'product_specifications' => $validated['product_specifications'] ?? null,
+                
+                // Order details
                 'priority' => $validated['priority'],
                 'status' => 'pending',
                 'source_type' => $validated['source_type'],
                 'source_id' => $validated['source_id'] ?? null,
-                'estimated_completion_at' => $validated['estimated_completion_at'] ?? null,
+                'notes' => $validated['notes'] ?? null,
                 'assigned_to' => $validated['assigned_to'] ?? null,
                 'created_by' => Auth::id(),
+                
+                // Legacy
+                'window_id' => $validated['window_id'] ?? null,
             ]);
 
             // Create order items if provided
@@ -109,6 +147,22 @@ class ProductionOrderController extends Controller
                 'notes' => 'Production order created',
                 'created_by' => Auth::id()
             ]);
+
+            // Send notification to production team
+            $this->notificationService->sendToRole(
+                'production',
+                'new_production_order',
+                "New production order #{$order->order_number} requires confirmation",
+                [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'customer_name' => $order->customer_name,
+                    'product_type' => $order->product_type,
+                    'quantity' => $order->quantity,
+                    'priority' => $order->priority
+                ],
+                $order->priority === 'urgent' ? 'critical' : 'normal'
+            );
 
             DB::commit();
 
@@ -504,4 +558,161 @@ class ProductionOrderController extends Controller
             'message' => 'Production order deleted successfully'
         ]);
     }
+
+    /**
+     * Confirm production order by production team
+     */
+    public function confirmOrder(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'estimated_completion_at' => 'required|date|after:now',
+            'notes' => 'nullable|string'
+        ]);
+
+        try {
+            $order = ProductionOrder::findOrFail($id);
+
+            $order->confirmByProduction(
+                Auth::id(),
+                $validated['estimated_completion_at']
+            );
+
+            // Create timeline entry
+            ProductionTimeline::create([
+                'production_order_id' => $order->id,
+                'status' => 'confirmed',
+                'notes' => $validated['notes'] ?? 'Order confirmed by production team',
+                'created_by' => Auth::id()
+            ]);
+
+            // Send notification to admin
+            $this->notificationService->sendToRole(
+                'admin',
+                'production_order_confirmed',
+                "Production order {$order->order_number} has been confirmed",
+                [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'estimated_completion' => $order->estimated_completion_at
+                ]
+            );
+
+            return new JsonResponse([
+                'message' => 'Production order confirmed successfully',
+                'order' => $order->fresh(['confirmedBy', 'assignedUser'])
+            ]);
+
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'message' => 'Failed to confirm order',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Report delay on production order
+     */
+    public function reportDelay(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'delay_reason' => 'required|string|max:500',
+            'revised_completion_at' => 'required|date|after:now'
+        ]);
+
+        try {
+            $order = ProductionOrder::findOrFail($id);
+
+            $order->reportDelay(
+                $validated['delay_reason'],
+                $validated['revised_completion_at']
+            );
+
+            // Create timeline entry
+            ProductionTimeline::create([
+                'production_order_id' => $order->id,
+                'status' => 'delayed',
+                'notes' => "Delay reported: {$validated['delay_reason']}",
+                'created_by' => Auth::id()
+            ]);
+
+            // Send notification to admin
+            $this->notificationService->sendToRole(
+                'admin',
+                'production_order_delayed',
+                "Production order {$order->order_number} is delayed",
+                [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'delay_reason' => $validated['delay_reason'],
+                    'revised_completion' => $order->revised_completion_at
+                ],
+                'critical'
+            );
+
+            return new JsonResponse([
+                'message' => 'Delay reported successfully',
+                'order' => $order->fresh()
+            ]);
+
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'message' => 'Failed to report delay',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update production progress
+     */
+    public function updateProgress(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:materials_check,materials_reserved,in_progress,quality_check,completed',
+            'notes' => 'nullable|string|max:1000'
+        ]);
+
+        try {
+            $order = ProductionOrder::findOrFail($id);
+            $oldStatus = $order->status;
+
+            $order->updateProgress(
+                $validated['status'],
+                $validated['notes'] ?? null
+            );
+
+            // Create timeline entry
+            ProductionTimeline::create([
+                'production_order_id' => $order->id,
+                'status' => $validated['status'],
+                'notes' => $validated['notes'] ?? "Status changed from {$oldStatus} to {$validated['status']}",
+                'created_by' => Auth::id()
+            ]);
+
+            // Send notification to admin
+            $this->notificationService->sendToRole(
+                'admin',
+                'production_order_updated',
+                "Production order {$order->order_number} status updated",
+                [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'status' => $validated['status']
+                ]
+            );
+
+            return new JsonResponse([
+                'message' => 'Production progress updated successfully',
+                'order' => $order->fresh(['timeline', 'assignedUser'])
+            ]);
+
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'message' => 'Failed to update progress',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
+

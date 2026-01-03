@@ -14,13 +14,30 @@ class ProductionOrder extends Model
         'order_number',
         'source_type',
         'source_id',
+        'customer_name',
+        'customer_phone',
+        'customer_email',
+        'delivery_address',
+        'delivery_city',
+        'delivery_postal_code',
+        'delivery_notes',
+        'product_type',
+        'product_description',
+        'quantity',
+        'product_specifications',
         'status',
         'priority',
         'notes',
         'started_at',
         'estimated_completion_at',
         'actual_completion_at',
-        'completed_at', // Keep for backwards compatibility
+        'completed_at',
+        'confirmed_by_production',
+        'confirmed_at',
+        'confirmed_by',
+        'is_delayed',
+        'delay_reason',
+        'revised_completion_at',
         'assigned_to',
         'created_by',
         'updated_by'
@@ -31,6 +48,11 @@ class ProductionOrder extends Model
         'estimated_completion_at' => 'datetime',
         'actual_completion_at' => 'datetime',
         'completed_at' => 'datetime',
+        'confirmed_at' => 'datetime',
+        'revised_completion_at' => 'datetime',
+        'product_specifications' => 'array',
+        'confirmed_by_production' => 'boolean',
+        'is_delayed' => 'boolean',
     ];
 
     // Relationships
@@ -84,6 +106,11 @@ class ProductionOrder extends Model
     public function updater()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function confirmedBy()
+    {
+        return $this->belongsTo(User::class, 'confirmed_by');
     }
 
     public function stockMovements()
@@ -166,5 +193,33 @@ class ProductionOrder extends Model
 
         // Wywołaj event
         event(new ProductionOrderCompleted($this));
+    }
+
+    public function confirmByProduction($userId, $estimatedCompletion = null): void
+    {
+        $this->update([
+            'confirmed_by_production' => true,
+            'confirmed_at' => now(),
+            'confirmed_by' => $userId,
+            'estimated_completion_at' => $estimatedCompletion ?? $this->estimated_completion_at,
+        ]);
+    }
+
+    public function reportDelay($reason, $revisedCompletion): void
+    {
+        $this->update([
+            'is_delayed' => true,
+            'delay_reason' => $reason,
+            'revised_completion_at' => $revisedCompletion,
+        ]);
+    }
+
+    public function updateProgress($status, $notes = null): void
+    {
+        $data = ['status' => $status];
+        if ($notes) {
+            $data['notes'] = $notes;
+        }
+        $this->update($data);
     }
 }

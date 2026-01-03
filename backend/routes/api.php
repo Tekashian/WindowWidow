@@ -105,6 +105,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('orders/{id}', [ProductionOrderController::class, 'update']);
         Route::delete('orders/{id}', [ProductionOrderController::class, 'destroy']);
         Route::post('orders/{id}/start', [ProductionOrderController::class, 'startProduction']);
+        Route::post('orders/{id}/confirm', [ProductionOrderController::class, 'confirmOrder']);
+        Route::post('orders/{id}/report-delay', [ProductionOrderController::class, 'reportDelay']);
+        Route::post('orders/{id}/update-progress', [ProductionOrderController::class, 'updateProgress']);
         Route::post('orders/{id}/update-status', [ProductionOrderController::class, 'updateStatus']);
         Route::post('orders/{id}/report-issue', [ProductionOrderController::class, 'reportIssue']);
         Route::post('orders/{id}/create-batch', [ProductionOrderController::class, 'createBatch']);

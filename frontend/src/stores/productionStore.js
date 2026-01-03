@@ -78,6 +78,11 @@ export const useProductionStore = defineStore('production', {
       }
     },
 
+    // Alias for fetchOrder
+    async fetchOrderDetails(id) {
+      return this.fetchOrder(id);
+    },
+
     async createOrder(orderData) {
       this.loading = true;
       this.error = null;
