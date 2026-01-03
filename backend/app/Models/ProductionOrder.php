@@ -29,6 +29,9 @@ class ProductionOrder extends Model
         'priority',
         'notes',
         'started_at',
+        'started_by',
+        'production_time_hours',
+        'estimated_warehouse_delivery_date',
         'estimated_completion_at',
         'actual_completion_at',
         'completed_at',
@@ -45,6 +48,7 @@ class ProductionOrder extends Model
 
     protected $casts = [
         'started_at' => 'datetime',
+        'estimated_warehouse_delivery_date' => 'datetime',
         'estimated_completion_at' => 'datetime',
         'actual_completion_at' => 'datetime',
         'completed_at' => 'datetime',
@@ -111,6 +115,11 @@ class ProductionOrder extends Model
     public function confirmedBy()
     {
         return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function startedBy()
+    {
+        return $this->belongsTo(User::class, 'started_by');
     }
 
     public function stockMovements()

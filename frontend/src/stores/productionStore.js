@@ -127,11 +127,11 @@ export const useProductionStore = defineStore('production', {
       }
     },
 
-    async startProduction(id, materials) {
+    async startProduction(id, productionData) {
       this.loading = true;
       this.error = null;
       try {
-        const response = await productionApi.startProduction(id, materials);
+        const response = await productionApi.startProduction(id, productionData);
         await this.fetchOrder(id);
         await this.fetchStatistics();
         return response.data;

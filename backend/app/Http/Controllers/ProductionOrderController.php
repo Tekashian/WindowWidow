@@ -219,92 +219,71 @@ class ProductionOrderController extends Controller
     }
 
     /**
-     * Start production (check and reserve materials)
+     * Start production order
      */
-    public function startProduction(Request $request, $id)
+    public function startProduction(Request $request, $id): JsonResponse
     {
-        $order = ProductionOrder::with('materials')->findOrFail($id);
-
-        if ($order->status !== 'pending') {
-            return new JsonResponse([
-                'message' => 'Only pending orders can be started'
-            ], 400);
-        }
+        $validated = $request->validate([
+            'production_time_hours' => 'required|integer|min:1',
+            'estimated_warehouse_delivery_date' => 'required|date|after:now',
+            'notes' => 'nullable|string'
+        ]);
 
         try {
             DB::beginTransaction();
 
-            // Check materials availability
-            $materialsNeeded = $request->validate([
-                'materials' => 'required|array',
-                'materials.*.material_id' => 'required|exists:materials,id',
-                'materials.*.quantity' => 'required|numeric|min:0',
-            ])['materials'];
+            $order = ProductionOrder::findOrFail($id);
 
-            $insufficientMaterials = [];
-
-            foreach ($materialsNeeded as $materialData) {
-                $material = Material::find($materialData['material_id']);
-                
-                if ($material->quantity < $materialData['quantity']) {
-                    $insufficientMaterials[] = [
-                        'material' => $material->name,
-                        'required' => $materialData['quantity'],
-                        'available' => $material->quantity
-                    ];
-                }
-            }
-
-            if (!empty($insufficientMaterials)) {
-                DB::rollBack();
+            if ($order->status !== 'pending') {
                 return new JsonResponse([
-                    'message' => 'Insufficient materials',
-                    'materials' => $insufficientMaterials
+                    'message' => 'Tylko oczekujące zlecenia mogą być rozpoczęte'
                 ], 400);
             }
 
-            // Reserve materials
-            foreach ($materialsNeeded as $materialData) {
-                $material = Material::find($materialData['material_id']);
-                
-                // Reduce stock
-                $material->decrement('quantity', $materialData['quantity']);
-
-                // Create material reservation
-                ProductionMaterial::create([
-                    'production_order_id' => $order->id,
-                    'material_id' => $material->id,
-                    'quantity_required' => $materialData['quantity'],
-                    'quantity_used' => 0,
-                    'reserved_at' => now()
-                ]);
-            }
-
-            // Update order status
+            // Update order status and production details
             $order->update([
-                'status' => 'materials_reserved',
-                'updated_by' => Auth::id()
+                'status' => 'in_progress',
+                'started_at' => now(),
+                'production_time_hours' => $validated['production_time_hours'],
+                'estimated_warehouse_delivery_date' => $validated['estimated_warehouse_delivery_date'],
+                'started_by' => Auth::id()
             ]);
 
-            // Add timeline entry
+            // Create timeline entry
             ProductionTimeline::create([
                 'production_order_id' => $order->id,
-                'status' => 'materials_reserved',
-                'notes' => 'Materials reserved and production ready to start',
+                'status' => 'in_progress',
+                'notes' => $validated['notes'] ?? "Produkcja rozpoczęta. Szacowany czas: {$validated['production_time_hours']}h. Data wysyłki: {$validated['estimated_warehouse_delivery_date']}",
                 'created_by' => Auth::id()
+            ]);
+
+            // Send notification to admin
+            $this->notificationService->createForRole('admin', [
+                'type' => 'production',
+                'title' => '🚀 Produkcja rozpoczęta',
+                'message' => "Zlecenie {$order->order_number} - produkcja rozpoczęta",
+                'data' => [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'production_time_hours' => $validated['production_time_hours'],
+                    'estimated_warehouse_delivery_date' => $validated['estimated_warehouse_delivery_date']
+                ],
+                'priority' => $order->priority === 'urgent' ? 'high' : 'normal',
+                'icon' => '🚀',
+                'link' => "/production/orders/{$order->id}"
             ]);
 
             DB::commit();
 
             return new JsonResponse([
-                'message' => 'Production started successfully',
-                'order' => $order->fresh(['materials.material'])
+                'message' => 'Produkcja rozpoczęta pomyślnie',
+                'order' => $order->fresh(['assignedUser', 'creator', 'timeline', 'startedBy'])
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             return new JsonResponse([
-                'message' => 'Failed to start production',
+                'message' => 'Nie udało się rozpocząć produkcji',
                 'error' => $e->getMessage()
             ], 500);
         }

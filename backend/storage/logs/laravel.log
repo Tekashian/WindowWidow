@@ -15803,3 +15803,11 @@
 #41 C:\\Users\\Admin\\Desktop\\vueLavarell\\backend\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\resources\\server.php(16): require_once('C:\\\\Users\\\\Admin\\\\...')
 #42 {main}
 "} 
+[2026-01-03 14:26:22] local.ERROR: Cannot redeclare App\Http\Controllers\ProductionOrderController::startProduction() {"userId":2,"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Cannot redeclare App\\Http\\Controllers\\ProductionOrderController::startProduction() at C:\\Users\\Admin\\Desktop\\vueLavarell\\backend\\app\\Http\\Controllers\\ProductionOrderController.php:558)
+[stacktrace]
+#0 {main}
+"} 
+[2026-01-03 14:26:22] local.ERROR: Cannot redeclare App\Http\Controllers\ProductionOrderController::startProduction() {"userId":2,"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Cannot redeclare App\\Http\\Controllers\\ProductionOrderController::startProduction() at C:\\Users\\Admin\\Desktop\\vueLavarell\\backend\\app\\Http\\Controllers\\ProductionOrderController.php:558)
+[stacktrace]
+#0 {main}
+"} 

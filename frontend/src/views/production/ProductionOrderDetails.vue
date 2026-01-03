@@ -159,6 +159,51 @@
     </div>
 
     <!-- Modals -->
+    <div v-if="showStartProductionModal" class="modal-overlay" @click="showStartProductionModal = false">
+      <div class="modal-content" @click.stop>
+        <h3 class="modal-title">🚀 Rozpocznij produkcję</h3>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Szacowany czas produkcji (w godzinach) *</label>
+            <input 
+              v-model.number="startProductionForm.production_time_hours" 
+              type="number" 
+              min="1"
+              class="form-input" 
+              placeholder="np. 24"
+            />
+            <p class="form-hint">Ile godzin zajmie wyprodukowanie tego zlecenia?</p>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Data wysyłki na magazyn *</label>
+            <input 
+              v-model="startProductionForm.estimated_warehouse_delivery_date" 
+              type="datetime-local"
+              :min="minDeliveryDate"
+              class="form-input"
+            />
+            <p class="form-hint">Kiedy produkt będzie gotowy do wysłania na magazyn?</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notatki</label>
+            <textarea 
+              v-model="startProductionForm.notes" 
+              class="form-textarea" 
+              rows="3"
+              placeholder="Opcjonalne uwagi dotyczące rozpoczęcia produkcji..."
+            ></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button @click="startProduction" class="modal-btn modal-btn-primary">🚀 Rozpocznij</button>
+            <button @click="showStartProductionModal = false" class="modal-btn modal-btn-secondary">Anuluj</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showUpdateStatusModal" class="modal-overlay" @click="showUpdateStatusModal = false">
       <div class="modal-content" @click.stop>
         <h3 class="modal-title">Zmień status</h3>
@@ -248,6 +293,12 @@ const showUpdateStatusModal = ref(false);
 const showReportIssueModal = ref(false);
 const showStartProductionModal = ref(false);
 
+const startProductionForm = ref({
+  production_time_hours: 24,
+  estimated_warehouse_delivery_date: '',
+  notes: ''
+});
+
 const updateStatusForm = ref({
   status: 'in_progress',
   notes: ''
@@ -258,6 +309,12 @@ const reportIssueForm = ref({
   severity: 'medium',
   description: '',
   impact: 'moderate'
+});
+
+const minDeliveryDate = computed(() => {
+  const now = new Date();
+  now.setHours(now.getHours() + 1); // Minimum 1 hour from now
+  return now.toISOString().slice(0, 16);
 });
 
 const isDelayed = computed(() => {
@@ -277,6 +334,20 @@ const formatDate = (dateString) => {
     hour: '2-digit',
     minute: '2-digit'
   });
+};
+
+const startProduction = async () => {
+  try {
+    await productionStore.startProduction(route.params.id, startProductionForm.value);
+    showStartProductionModal.value = false;
+    startProductionForm.value = {
+      production_time_hours: 24,
+      estimated_warehouse_delivery_date: '',
+      notes: ''
+    };
+  } catch (err) {
+    console.error('Failed to start production:', err);
+  }
 };
 
 const updateStatus = async () => {
@@ -774,6 +845,7 @@ onMounted(() => {
   margin-bottom: 0.5rem;
 }
 
+.form-input,
 .form-select,
 .form-textarea {
   width: 100%;
@@ -785,10 +857,17 @@ onMounted(() => {
   transition: all var(--transition-base);
 }
 
+.form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
   outline: none;
   border-color: var(--primary);
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  margin-top: 0.25rem;
 }
 
 .modal-actions {
