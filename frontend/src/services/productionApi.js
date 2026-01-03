@@ -9,6 +9,19 @@ const getAuthHeaders = () => {
 };
 
 export const productionApi = {
+  // Helper endpoints
+  getProducts() {
+    return axios.get(`${API_BASE}/production/products`, {
+      headers: getAuthHeaders()
+    });
+  },
+
+  getCompanySettings() {
+    return axios.get(`${API_BASE}/production/company-settings`, {
+      headers: getAuthHeaders()
+    });
+  },
+
   // Production Orders
   getOrders(filters = {}) {
     return axios.get(`${API_BASE}/production/orders`, {

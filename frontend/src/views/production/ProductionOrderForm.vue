@@ -7,112 +7,35 @@
       <h1>Nowe Zlecenie Produkcyjne</h1>
     </div>
 
+    <div v-if="loading" class="loading-alert">
+      Ładowanie danych...
+    </div>
+
     <div v-if="error" class="error-alert">
       {{ error }}
     </div>
 
     <form @submit.prevent="handleSubmit" class="order-form">
-      <!-- Customer Information -->
+      <!-- Product Selection -->
       <section class="form-section">
-        <h2>Informacje o Kliencie</h2>
+        <h2>Wybór Produktu</h2>
         <div class="form-grid">
           <div class="form-group">
-            <label for="customer_name">Imię i Nazwisko / Firma *</label>
-            <input
-              id="customer_name"
-              v-model="form.customer_name"
-              type="text"
+            <label for="product_id">Produkt *</label>
+            <select
+              id="product_id"
+              v-model="form.product_id"
               required
-              placeholder="Jan Kowalski"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="customer_phone">Telefon *</label>
-            <input
-              id="customer_phone"
-              v-model="form.customer_phone"
-              type="tel"
-              required
-              placeholder="+48 123 456 789"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="customer_email">Email</label>
-            <input
-              id="customer_email"
-              v-model="form.customer_email"
-              type="email"
-              placeholder="klient@example.com"
-            />
-          </div>
-        </div>
-      </section>
-
-      <!-- Delivery Address -->
-      <section class="form-section">
-        <h2>Adres Dostawy</h2>
-        <div class="form-grid">
-          <div class="form-group full-width">
-            <label for="delivery_address">Ulica i Numer *</label>
-            <input
-              id="delivery_address"
-              v-model="form.delivery_address"
-              type="text"
-              required
-              placeholder="ul. Przykładowa 123"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="delivery_city">Miasto *</label>
-            <input
-              id="delivery_city"
-              v-model="form.delivery_city"
-              type="text"
-              required
-              placeholder="Warszawa"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="delivery_postal_code">Kod Pocztowy *</label>
-            <input
-              id="delivery_postal_code"
-              v-model="form.delivery_postal_code"
-              type="text"
-              required
-              placeholder="00-000"
-              pattern="[0-9]{2}-[0-9]{3}"
-            />
-          </div>
-
-          <div class="form-group full-width">
-            <label for="delivery_notes">Uwagi do dostawy</label>
-            <textarea
-              id="delivery_notes"
-              v-model="form.delivery_notes"
-              rows="2"
-              placeholder="Dodatkowe informacje dla kuriera..."
-            ></textarea>
-          </div>
-        </div>
-      </section>
-
-      <!-- Product Details -->
-      <section class="form-section">
-        <h2>Szczegóły Produktu</h2>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="product_type">Typ Produktu *</label>
-            <select id="product_type" v-model="form.product_type" required>
-              <option value="">Wybierz...</option>
-              <option value="Okno">Okno</option>
-              <option value="Drzwi">Drzwi</option>
-              <option value="Panel szklany">Panel szklany</option>
-              <option value="Balkon">Balkon</option>
-              <option value="Inna stolarka">Inna stolarka</option>
+              @change="onProductChange"
+            >
+              <option value="">Wybierz produkt...</option>
+              <option
+                v-for="product in products"
+                :key="product.id"
+                :value="product.id"
+              >
+                {{ product.name }} ({{ product.code }})
+              </option>
             </select>
           </div>
 
@@ -127,40 +50,85 @@
               placeholder="1"
             />
           </div>
+        </div>
+
+        <div v-if="selectedProduct" class="product-details">
+          <h3>Szczegóły produktu:</h3>
+          <p><strong>Typ:</strong> {{ selectedProduct.type }}</p>
+          <p><strong>Opis:</strong> {{ selectedProduct.description }}</p>
+          <p><strong>Szacowany czas produkcji:</strong> {{ selectedProduct.estimated_production_days }} dni</p>
+          <div v-if="selectedProduct.default_specifications">
+            <p><strong>Domyślne specyfikacje:</strong></p>
+            <pre>{{ JSON.stringify(selectedProduct.default_specifications, null, 2) }}</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Customer Information (Pre-filled with company data) -->
+      <section class="form-section">
+        <h2>Zamawiający (dane do faktury)</h2>
+        <div class="info-box">
+          <p><strong>Firma:</strong> {{ form.customer_name }}</p>
+          <p><strong>Telefon:</strong> {{ form.customer_phone }}</p>
+          <p><strong>Email:</strong> {{ form.customer_email }}</p>
+        </div>
+        <p class="help-text">Dane firmy (automatycznie wypełnione)</p>
+      </section>
+
+      <!-- Delivery Address (Pre-filled with warehouse) -->
+      <section class="form-section">
+        <h2>Miejsce Dostawy</h2>
+        <div class="info-box">
+          <p><strong>Adres:</strong> {{ form.delivery_address }}</p>
+          <p><strong>Miasto:</strong> {{ form.delivery_city }}</p>
+          <p><strong>Kod pocztowy:</strong> {{ form.delivery_postal_code }}</p>
+        </div>
+        <p class="help-text">Magazyn (automatycznie wypełniony)</p>
+        
+        <div class="form-group full-width">
+          <label for="delivery_notes">Uwagi do dostawy</label>
+          <textarea
+            id="delivery_notes"
+            v-model="form.delivery_notes"
+            rows="2"
+            placeholder="Dodatkowe informacje dotyczące dostawy"
+          ></textarea>
+        </div>
+      </section>
+
+      <!-- Order Settings -->
+      <section class="form-section">
+        <h2>Ustawienia Zlecenia</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="priority">Priorytet *</label>
+            <select id="priority" v-model="form.priority" required>
+              <option value="low">Niski</option>
+              <option value="normal">Normalny</option>
+              <option value="high">Wysoki</option>
+              <option value="urgent">Pilne</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="source_type">Źródło Zlecenia *</label>
+            <select id="source_type" v-model="form.source_type" required>
+              <option value="customer_order">Zamówienie klienta</option>
+              <option value="stock_replenishment">Uzupełnienie magazynu</option>
+            </select>
+          </div>
 
           <div class="form-group full-width">
-            <label for="product_description">Opis Produktu *</label>
+            <label for="notes">Uwagi do zlecenia</label>
             <textarea
-              id="product_description"
-              v-model="form.product_description"
+              id="notes"
+              v-model="form.notes"
               rows="3"
-              required
-              placeholder="Szczegółowy opis produktu..."
+              placeholder="Dodatkowe informacje..."
             ></textarea>
           </div>
-
-          <!-- Product Specifications -->
-          <div class="form-group">
-            <label for="width">Szerokość (cm)</label>
-            <input
-              id="width"
-              v-model.number="specifications.width"
-              type="number"
-              placeholder="120"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="height">Wysokość (cm)</label>
-            <input
-              id="height"
-              v-model.number="specifications.height"
-              type="number"
-              placeholder="150"
-            />
-          </div>
-
-          <div class="form-group">
+        </div>
+      </section>
             <label for="color">Kolor</label>
             <input
               id="color"
@@ -221,7 +189,7 @@
         <button type="button" @click="$router.back()" class="btn-cancel">
           Anuluj
         </button>
-        <button type="submit" :disabled="loading" class="btn-submit">
+        <button type="submit" :disabled="loading || !form.product_id" class="btn-submit">
           {{ loading ? 'Tworzenie...' : 'Utwórz Zlecenie' }}
         </button>
       </div>
@@ -230,8 +198,9 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { productionApi } from '../../services/productionApi'
 import { useProductionStore } from '../../stores/productionStore'
 
 const router = useRouter()
@@ -239,8 +208,12 @@ const productionStore = useProductionStore()
 
 const loading = ref(false)
 const error = ref(null)
+const products = ref([])
+const companySettings = ref(null)
 
 const form = reactive({
+  product_id: '',
+  quantity: 1,
   customer_name: '',
   customer_phone: '',
   customer_email: '',
@@ -248,39 +221,56 @@ const form = reactive({
   delivery_city: '',
   delivery_postal_code: '',
   delivery_notes: '',
-  product_type: '',
-  product_description: '',
-  quantity: 1,
   priority: 'normal',
   source_type: 'customer_order',
   notes: ''
 })
 
-const specifications = reactive({
-  width: null,
-  height: null,
-  color: '',
-  material: ''
+// Get selected product details
+const selectedProduct = computed(() => {
+  if (!form.product_id) return null
+  return products.value.find(p => p.id === form.product_id)
 })
+
+// Load products and company settings on mount
+onMounted(async () => {
+  loading.value = true
+  try {
+    const [productsRes, settingsRes] = await Promise.all([
+      productionApi.getProducts(),
+      productionApi.getCompanySettings()
+    ])
+    
+    products.value = productsRes.data.data || []
+    companySettings.value = settingsRes.data.data
+    
+    // Pre-fill company and warehouse data
+    if (companySettings.value) {
+      form.customer_name = companySettings.value.company_name
+      form.customer_phone = companySettings.value.phone
+      form.customer_email = companySettings.value.email
+      form.delivery_address = companySettings.value.warehouse_address
+      form.delivery_city = companySettings.value.warehouse_city
+      form.delivery_postal_code = companySettings.value.warehouse_postal_code
+    }
+  } catch (err) {
+    error.value = 'Nie udało się załadować danych'
+    console.error('Failed to load data:', err)
+  } finally {
+    loading.value = false
+  }
+})
+
+const onProductChange = () => {
+  // Product details are now displayed reactively via selectedProduct computed
+}
 
 const handleSubmit = async () => {
   error.value = null
   loading.value = true
 
   try {
-    // Build specifications object (only non-empty values)
-    const productSpecs = {}
-    if (specifications.width) productSpecs.width = specifications.width
-    if (specifications.height) productSpecs.height = specifications.height
-    if (specifications.color) productSpecs.color = specifications.color
-    if (specifications.material) productSpecs.material = specifications.material
-
-    const orderData = {
-      ...form,
-      product_specifications: Object.keys(productSpecs).length > 0 ? productSpecs : null
-    }
-
-    await productionStore.createOrder(orderData)
+    await productionStore.createOrder(form)
     
     // Redirect to orders list
     router.push({ name: 'production-orders-list' })
@@ -305,6 +295,15 @@ const handleSubmit = async () => {
   align-items: center;
   gap: 1rem;
   margin-bottom: 2rem;
+}
+
+.loading-alert {
+  padding: 1rem;
+  background: var(--primary);
+  color: var(--darker);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  text-align: center;
 }
 
 .back-button {
@@ -358,6 +357,55 @@ const handleSubmit = async () => {
   margin-bottom: 1.5rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(0, 245, 255, 0.2);
+}
+
+.form-section h3 {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.product-details {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--dark);
+  border: 1px solid rgba(0, 245, 255, 0.1);
+  border-radius: 8px;
+}
+
+.product-details p {
+  margin: 0.5rem 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.product-details pre {
+  background: var(--darker);
+  padding: 0.75rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.info-box {
+  padding: 1rem;
+  background: var(--dark);
+  border: 1px solid rgba(0, 245, 255, 0.15);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.info-box p {
+  margin: 0.5rem 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.help-text {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  margin-top: 0.5rem;
 }
 
 .form-grid {
@@ -444,6 +492,11 @@ const handleSubmit = async () => {
   cursor: pointer;
   font-weight: 600;
   transition: all 0.3s;
+}
+
+.btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-submit:hover:not(:disabled) {

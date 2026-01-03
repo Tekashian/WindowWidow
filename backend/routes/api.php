@@ -97,6 +97,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     // New Production System (production and admin roles)
     Route::prefix('production')->middleware('role:production,admin')->group(function () {
+        // Production helpers
+        Route::get('products', [ProductionOrderController::class, 'getProducts']);
+        Route::get('company-settings', [ProductionOrderController::class, 'getCompanySettings']);
+        
         // Production Orders
         Route::get('orders', [ProductionOrderController::class, 'index']);
         Route::post('orders', [ProductionOrderController::class, 'store']);

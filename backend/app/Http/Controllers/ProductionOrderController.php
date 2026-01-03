@@ -67,58 +67,59 @@ class ProductionOrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            // Customer information
-            'customer_name' => 'required|string|max:255',
-            'customer_phone' => 'required|string|max:20',
+            // Product selection
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
+            
+            // Customer information (optional - can be auto-filled)
+            'customer_name' => 'nullable|string|max:255',
+            'customer_phone' => 'nullable|string|max:20',
             'customer_email' => 'nullable|email|max:255',
             
-            // Delivery information
-            'delivery_address' => 'required|string',
-            'delivery_city' => 'required|string|max:100',
-            'delivery_postal_code' => 'required|string|max:10',
+            // Delivery information (optional - defaults to warehouse)
+            'delivery_address' => 'nullable|string',
+            'delivery_city' => 'nullable|string|max:100',
+            'delivery_postal_code' => 'nullable|string|max:10',
             'delivery_notes' => 'nullable|string',
             
-            // Product information
-            'product_type' => 'required|string|max:100',
-            'product_description' => 'required|string',
-            'quantity' => 'required|integer|min:1',
-            'product_specifications' => 'nullable|array',
-            
-            // Order details
+            // Order settings
             'priority' => 'required|in:low,normal,high,urgent',
             'source_type' => 'required|in:customer_order,stock_replenishment',
             'source_id' => 'nullable|integer',
             'notes' => 'nullable|string',
             'assigned_to' => 'nullable|exists:users,id',
-            
-            // Legacy fields
-            'window_id' => 'nullable|exists:windows,id',
-            'items' => 'nullable|array',
-            'items.*.profile_id' => 'required_with:items|exists:profiles,id',
-            'items.*.glass_id' => 'required_with:items|exists:glasses,id',
-            'items.*.quantity' => 'required_with:items|integer|min:1',
         ]);
 
         try {
             DB::beginTransaction();
 
+            // Get product and company settings
+            $product = DB::table('products')->find($validated['product_id']);
+            $company = DB::table('company_settings')->first();
+
+            // Use company data as defaults if customer data not provided
+            $customerName = $validated['customer_name'] ?? $company->company_name;
+            $deliveryAddress = $validated['delivery_address'] ?? $company->warehouse_address;
+            $deliveryCity = $validated['delivery_city'] ?? $company->warehouse_city;
+            $deliveryPostalCode = $validated['delivery_postal_code'] ?? $company->warehouse_postal_code;
+
             $order = ProductionOrder::create([
-                // Customer info
-                'customer_name' => $validated['customer_name'],
-                'customer_phone' => $validated['customer_phone'],
-                'customer_email' => $validated['customer_email'] ?? null,
+                // Customer info (auto-filled with company data if empty)
+                'customer_name' => $customerName,
+                'customer_phone' => $validated['customer_phone'] ?? $company->phone,
+                'customer_email' => $validated['customer_email'] ?? $company->email,
                 
-                // Delivery info
-                'delivery_address' => $validated['delivery_address'],
-                'delivery_city' => $validated['delivery_city'],
-                'delivery_postal_code' => $validated['delivery_postal_code'],
+                // Delivery info (defaults to warehouse)
+                'delivery_address' => $deliveryAddress,
+                'delivery_city' => $deliveryCity,
+                'delivery_postal_code' => $deliveryPostalCode,
                 'delivery_notes' => $validated['delivery_notes'] ?? null,
                 
-                // Product info
-                'product_type' => $validated['product_type'],
-                'product_description' => $validated['product_description'],
+                // Product info from database
+                'product_type' => $product->name,
+                'product_description' => $product->description,
                 'quantity' => $validated['quantity'],
-                'product_specifications' => $validated['product_specifications'] ?? null,
+                'product_specifications' => $product->default_specifications,
                 
                 // Order details
                 'priority' => $validated['priority'],
@@ -128,14 +129,7 @@ class ProductionOrderController extends Controller
                 'notes' => $validated['notes'] ?? null,
                 'assigned_to' => $validated['assigned_to'] ?? null,
                 'created_by' => Auth::id(),
-                
-                // Legacy
-                'window_id' => $validated['window_id'] ?? null,
             ]);
-
-            // Create order items if provided
-            if (isset($validated['items'])) {
-                foreach ($validated['items'] as $item) {
                     $order->items()->create($item);
                 }
             }
@@ -710,6 +704,53 @@ class ProductionOrderController extends Controller
         } catch (\Exception $e) {
             return new JsonResponse([
                 'message' => 'Failed to update progress',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get available products for production
+     */
+    public function getProducts()
+    {
+        try {
+            $products = DB::table('products')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
+
+            return new JsonResponse([
+                'data' => $products
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'message' => 'Failed to fetch products',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get company settings
+     */
+    public function getCompanySettings()
+    {
+        try {
+            $settings = DB::table('company_settings')->first();
+
+            if (!$settings) {
+                return new JsonResponse([
+                    'message' => 'Company settings not found'
+                ], 404);
+            }
+
+            return new JsonResponse([
+                'data' => $settings
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'message' => 'Failed to fetch company settings',
                 'error' => $e->getMessage()
             ], 500);
         }
