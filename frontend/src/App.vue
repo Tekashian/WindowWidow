@@ -1,6 +1,6 @@
 <script setup>
 import { RouterLink, RouterView, useRouter } from 'vue-router'
-import { computed, ref } from 'vue'
+import { computed, ref, provide } from 'vue'
 import { useAuthStore } from './stores/auth'
 import NotificationCenter from './components/NotificationCenter.vue'
 import ToastContainer from './components/ToastContainer.vue'
@@ -26,6 +26,9 @@ const handleLogout = async () => {
 const closeMobileMenu = () => {
   mobileMenuOpen.value = false
 }
+
+// Provide closeMobileMenu to child components
+provide('closeMobileMenu', closeMobileMenu)
 </script>
 
 <template>

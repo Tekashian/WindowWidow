@@ -84,12 +84,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, inject } from 'vue';
 import { useNotificationStore } from '../stores/notificationStore';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const notificationStore = useNotificationStore();
+
+// Inject closeMobileMenu from App.vue
+const closeMobileMenu = inject('closeMobileMenu', () => {});
 
 const showPanel = ref(false);
 const panelRef = ref(null);
@@ -114,6 +117,8 @@ const handleNotificationClick = async (notification) => {
   if (notification.link) {
     router.push(notification.link);
     closePanel();
+    // Close mobile menu when navigating from notification
+    closeMobileMenu();
   }
 };
 
@@ -452,9 +457,60 @@ onMounted(() => {
 }
 
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .notifications-panel {
-    width: calc(100vw - 2rem);
+    position: fixed;
+    right: 1rem;
+    left: 1rem;
+    top: 70px;
+    width: auto;
+    max-width: none;
+    margin-top: 0;
+  }
+
+  .panel-header {
+    padding: 0.625rem 0.75rem;
+  }
+
+  .panel-title {
+    font-size: 0.9rem;
+  }
+
+  .action-btn {
+    font-size: 0.7rem;
+  }
+
+  .notifications-list {
+    max-height: calc(100vh - 200px);
+  }
+
+  .notification-item {
+    padding: 0.625rem 0.75rem;
+  }
+
+  .notification-icon {
+    font-size: 1.25rem;
+  }
+
+  .notification-title {
+    font-size: 0.8125rem;
+  }
+
+  .notification-message {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .bell-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .unread-badge {
+    width: 1.125rem;
+    height: 1.125rem;
+    font-size: 0.625rem;
   }
 }
 </style>
