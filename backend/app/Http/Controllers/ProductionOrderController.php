@@ -130,9 +130,6 @@ class ProductionOrderController extends Controller
                 'assigned_to' => $validated['assigned_to'] ?? null,
                 'created_by' => Auth::id(),
             ]);
-                    $order->items()->create($item);
-                }
-            }
 
             // Create initial timeline entry
             ProductionTimeline::create([
