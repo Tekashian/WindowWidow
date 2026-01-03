@@ -248,6 +248,8 @@ const closeMobileMenu = () => {
 #app {
   display: flex;
   min-height: 100vh;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 /* Mobile Menu Toggle Button */
@@ -476,18 +478,23 @@ const closeMobileMenu = () => {
   flex-direction: column;
   background: var(--gray-50);
   min-width: 0;
+  overflow-x: hidden;
+  width: calc(100% - 280px);
 }
 
 .main-content.full-width {
   margin-left: 0;
+  width: 100%;
 }
 
 .content-wrapper {
   flex: 1;
   padding: 2rem;
-  max-width: 1600px;
+  max-width: 100%;
   width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .footer {

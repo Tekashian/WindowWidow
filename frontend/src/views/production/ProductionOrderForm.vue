@@ -129,60 +129,6 @@
           </div>
         </div>
       </section>
-            <label for="color">Kolor</label>
-            <input
-              id="color"
-              v-model="specifications.color"
-              type="text"
-              placeholder="Biały"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="material">Materiał</label>
-            <input
-              id="material"
-              v-model="specifications.material"
-              type="text"
-              placeholder="PVC"
-            />
-          </div>
-        </div>
-      </section>
-
-      <!-- Order Settings -->
-      <section class="form-section">
-        <h2>Ustawienia Zlecenia</h2>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="priority">Priorytet *</label>
-            <select id="priority" v-model="form.priority" required>
-              <option value="low">Niski</option>
-              <option value="normal">Normalny</option>
-              <option value="high">Wysoki</option>
-              <option value="urgent">Pilne</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="source_type">Źródło *</label>
-            <select id="source_type" v-model="form.source_type" required>
-              <option value="customer_order">Zamówienie klienta</option>
-              <option value="stock_replenishment">Uzupełnienie magazynu</option>
-            </select>
-          </div>
-
-          <div class="form-group full-width">
-            <label for="notes">Uwagi</label>
-            <textarea
-              id="notes"
-              v-model="form.notes"
-              rows="3"
-              placeholder="Dodatkowe informacje dla zespołu produkcji..."
-            ></textarea>
-          </div>
-        </div>
-      </section>
 
       <!-- Form Actions -->
       <div class="form-actions">
@@ -286,8 +232,11 @@ const handleSubmit = async () => {
 <style scoped>
 .order-form-container {
   padding: 2rem;
-  max-width: 1200px;
+  max-width: 100%;
+  width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .form-header {
@@ -341,6 +290,9 @@ const handleSubmit = async () => {
   border: 1px solid rgba(0, 245, 255, 0.2);
   border-radius: 12px;
   padding: 2rem;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
 }
 
 .form-section {
@@ -412,6 +364,8 @@ const handleSubmit = async () => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .form-group {
@@ -440,6 +394,9 @@ const handleSubmit = async () => {
   color: white;
   font-family: inherit;
   transition: all 0.3s;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
 }
 
 .form-group input:focus,
@@ -453,10 +410,18 @@ const handleSubmit = async () => {
 .form-group textarea {
   resize: vertical;
   min-height: 80px;
+  font-family: inherit;
+  line-height: 1.5;
 }
 
 .form-group select {
   cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300F5FF' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.2rem;
+  padding-right: 2.5rem;
 }
 
 .form-actions {
