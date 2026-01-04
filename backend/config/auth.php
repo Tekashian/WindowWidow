@@ -12,7 +12,7 @@ return [
         ],
         'sanctum' => [
             'driver' => 'sanctum',
-            'provider' => null,
+            'provider' => 'users',
         ],
     ],
     'providers' => [

@@ -21,7 +21,16 @@ class NotificationController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Notification::where('user_id', $request->user()->id)
+        $user = $request->user();
+        
+        if (!$user) {
+            return new JsonResponse([
+                'data' => [],
+                'unread_count' => 0,
+            ]);
+        }
+        
+        $query = Notification::where('user_id', $user->id)
             ->orderBy('created_at', 'desc');
 
         // Filter by read status
@@ -45,7 +54,7 @@ class NotificationController extends Controller
 
         return new JsonResponse([
             'data' => $notifications,
-            'unread_count' => $this->notificationService->getUnreadCount($request->user()->id),
+            'unread_count' => $this->notificationService->getUnreadCount($user->id),
         ]);
     }
 

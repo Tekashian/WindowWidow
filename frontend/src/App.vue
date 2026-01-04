@@ -127,6 +127,16 @@ provide('closeMobileMenu', closeMobileMenu)
               <span>Dostawy</span>
             </RouterLink>
           </li>
+          <li>
+            <RouterLink to="/warehouse/materials" class="nav-link" @click="closeMobileMenu">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="21" x2="9" y2="9"/>
+              </svg>
+              <span>Zarządzaj Materiałami</span>
+            </RouterLink>
+          </li>
         </template>
         <li v-if="canAccessWarehouse">
           <RouterLink to="/materials" class="nav-link" @click="closeMobileMenu">

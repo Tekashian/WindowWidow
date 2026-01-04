@@ -184,7 +184,9 @@ class ProductionOrder extends Model
 
         // Zmień status wszystkich okien na "w produkcji"
         foreach ($this->items as $item) {
-            $item->window->update(['status' => 'w_produkcji']);
+            if ($item->window) {
+                $item->window->update(['status' => 'w_produkcji']);
+            }
         }
     }
 
@@ -197,7 +199,9 @@ class ProductionOrder extends Model
 
         // Zmień status wszystkich okien na "gotowe"
         foreach ($this->items as $item) {
-            $item->window->update(['status' => 'gotowe']);
+            if ($item->window) {
+                $item->window->update(['status' => 'gotowe']);
+            }
         }
 
         // Wywołaj event

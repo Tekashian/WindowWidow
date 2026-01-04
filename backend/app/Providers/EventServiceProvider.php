@@ -18,6 +18,9 @@ class EventServiceProvider extends ServiceProvider
         \App\Events\LowStockAlert::class => [
             \App\Listeners\NotifyLowStock::class,
         ],
+        \App\Events\ProductionStarted::class => [
+            \App\Listeners\NotifyWarehouseAboutDelivery::class,
+        ],
     ];
 
     public function boot(): void

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ProductionOrderController extends Controller
 {
@@ -223,18 +224,28 @@ class ProductionOrderController extends Controller
      */
     public function startProduction(Request $request, $id): JsonResponse
     {
-        $validated = $request->validate([
-            'production_time_hours' => 'required|integer|min:1',
-            'estimated_warehouse_delivery_date' => 'required|date|after:now',
-            'notes' => 'nullable|string'
-        ]);
-
         try {
+            Log::info('Starting production request', [
+                'order_id' => $id,
+                'data' => $request->all(),
+                'user_id' => Auth::id()
+            ]);
+
+            $validated = $request->validate([
+                'production_time_hours' => 'required|integer|min:1',
+                'estimated_warehouse_delivery_date' => 'required|date|after:now',
+                'notes' => 'nullable|string'
+            ]);
+
             DB::beginTransaction();
 
             $order = ProductionOrder::findOrFail($id);
 
             if ($order->status !== 'pending') {
+                Log::warning('Cannot start production - invalid status', [
+                    'order_id' => $id,
+                    'current_status' => $order->status
+                ]);
                 return new JsonResponse([
                     'message' => 'Tylko oczekujące zlecenia mogą być rozpoczęte'
                 ], 400);
@@ -280,8 +291,22 @@ class ProductionOrderController extends Controller
                 'order' => $order->fresh(['assignedUser', 'creator', 'timeline', 'startedBy'])
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed for start production', [
+                'order_id' => $id,
+                'errors' => $e->errors()
+            ]);
+            return new JsonResponse([
+                'message' => 'Błąd walidacji danych',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to start production', [
+                'order_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return new JsonResponse([
                 'message' => 'Nie udało się rozpocząć produkcji',
                 'error' => $e->getMessage()

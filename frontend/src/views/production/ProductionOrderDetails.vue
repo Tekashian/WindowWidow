@@ -345,8 +345,30 @@ const startProduction = async () => {
       estimated_warehouse_delivery_date: '',
       notes: ''
     };
+    // Odśwież dane zlecenia
+    await productionStore.fetchOrder(route.params.id);
   } catch (err) {
     console.error('Failed to start production:', err);
+    
+    // Wyświetl szczegółowy błąd użytkownikowi
+    let errorMessage = 'Nie udało się rozpocząć produkcji.';
+    
+    if (err.response) {
+      // Backend zwrócił błąd
+      if (err.response.data && err.response.data.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response.data && err.response.data.message) {
+        errorMessage = err.response.data.message;
+      } else {
+        errorMessage = `Błąd serwera (${err.response.status}): ${err.response.statusText}`;
+      }
+    } else if (err.request) {
+      errorMessage = 'Brak odpowiedzi od serwera. Sprawdź połączenie internetowe.';
+    } else {
+      errorMessage = err.message || 'Wystąpił nieznany błąd.';
+    }
+    
+    alert(`❌ ${errorMessage}`);
   }
 };
 

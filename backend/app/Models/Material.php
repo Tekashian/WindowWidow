@@ -61,7 +61,7 @@ class Material extends Model
             'type' => 'out',
             'quantity' => $quantity,
             'reason' => $reason ?? 'Zużycie produkcyjne',
-            'user_id' => auth()->id(),
+            'user_id' => auth()->id() ?? null,
         ]);
     }
 }

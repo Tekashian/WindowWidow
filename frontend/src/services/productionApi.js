@@ -54,8 +54,8 @@ export const productionApi = {
     });
   },
 
-  startProduction(id, materials) {
-    return axios.post(`${API_BASE}/production/orders/${id}/start`, { materials }, {
+  startProduction(id, productionData) {
+    return axios.post(`${API_BASE}/production/orders/${id}/start`, productionData, {
       headers: getAuthHeaders()
     });
   },

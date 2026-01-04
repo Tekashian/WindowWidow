@@ -54,15 +54,48 @@ class ProductionOrderService
      */
     public function startProduction(ProductionOrder $productionOrder): void
     {
+        // Walidacja: sprawdź czy zlecenie może być rozpoczęte
+        if (in_array($productionOrder->status, ['w_trakcie', 'zakonczone', 'anulowane'])) {
+            throw new Exception("Nie można rozpocząć produkcji. Zlecenie ma już status: {$productionOrder->status}");
+        }
+
+        // Sprawdź czy zlecenie ma pozycje
+        if ($productionOrder->items->isEmpty()) {
+            throw new Exception("Nie można rozpocząć produkcji. Zlecenie nie zawiera żadnych pozycji produktowych.");
+        }
+
         DB::beginTransaction();
 
         try {
-            // Pobierz wszystkie materiały potrzebne do produkcji
+            // Próbuj zużyć materiały jeśli są dostępne
             foreach ($productionOrder->items as $item) {
-                $this->consumeMaterialsForWindow($item->window, $item->quantity, $productionOrder);
+                if ($item->window) {
+                    try {
+                        $this->consumeMaterialsForWindow($item->window, $item->quantity, $productionOrder);
+                    } catch (Exception $e) {
+                        // Loguj błąd ale kontynuuj produkcję
+                        \Log::warning('Material consumption failed', [
+                            'order' => $productionOrder->order_number,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
             }
 
+            // Oblicz przewidywany czas produkcji
+            $productionTimeHours = $this->calculateProductionTime($productionOrder);
+            $estimatedWarehouseDeliveryDate = now()->addHours($productionTimeHours);
+
+            // Zaktualizuj zlecenie
+            $productionOrder->update([
+                'production_time_hours' => $productionTimeHours,
+                'estimated_warehouse_delivery_date' => $estimatedWarehouseDeliveryDate,
+            ]);
+
             $productionOrder->start();
+
+            // Wywołaj event powiadamiający magazyn
+            event(new \App\Events\ProductionStarted($productionOrder));
 
             DB::commit();
 
@@ -70,6 +103,31 @@ class ProductionOrderService
             DB::rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Oblicz przewidywany czas produkcji w godzinach
+     */
+    private function calculateProductionTime(ProductionOrder $productionOrder): int
+    {
+        $totalTime = 0;
+        
+        foreach ($productionOrder->items as $item) {
+            // Przykładowa logika: każde okno zajmuje 2 godziny produkcji
+            $timePerWindow = 2;
+            $totalTime += $timePerWindow * $item->quantity;
+        }
+        
+        // Dodaj bufor czasowy w zależności od priorytetu
+        $priorityMultiplier = match($productionOrder->priority) {
+            'pilne' => 0.8,  // przyspieszona produkcja
+            'wysoka' => 0.9,
+            'normalna' => 1.0,
+            'niska' => 1.2,
+            default => 1.0,
+        };
+        
+        return (int) ceil($totalTime * $priorityMultiplier);
     }
 
     /**
@@ -85,12 +143,17 @@ class ProductionOrderService
      */
     private function consumeMaterialsForWindow($window, int $quantity, ProductionOrder $productionOrder): void
     {
+        // Pomiń zużycie materiałów jeśli brak danych o oknie lub materiałach w bazie
+        if (!$window || !$window->width || !$window->height) {
+            return;
+        }
+
         // Przykładowe zużycie materiałów (można rozbudować o bardziej złożoną logikę)
         
         // Profil - oblicz obwód okna w metrach
         $perimeter = (($window->width + $window->height) * 2) / 1000; // mm -> m
         $profileMaterial = Material::where('type', 'profil')->first();
-        if ($profileMaterial) {
+        if ($profileMaterial && $profileMaterial->current_stock >= $perimeter * $quantity) {
             $profileMaterial->removeStock(
                 $perimeter * $quantity, 
                 "Zlecenie: {$productionOrder->order_number}"
@@ -100,7 +163,7 @@ class ProductionOrderService
         // Szyba - oblicz powierzchnię w m²
         $area = ($window->width * $window->height) / 1000000; // mm² -> m²
         $glassMaterial = Material::where('type', 'szyba')->first();
-        if ($glassMaterial) {
+        if ($glassMaterial && $glassMaterial->current_stock >= $area * $quantity) {
             $glassMaterial->removeStock(
                 $area * $quantity, 
                 "Zlecenie: {$productionOrder->order_number}"
@@ -109,7 +172,7 @@ class ProductionOrderService
 
         // Okucia - stała ilość na okno
         $hardwareMaterial = Material::where('type', 'okucie')->first();
-        if ($hardwareMaterial) {
+        if ($hardwareMaterial && $hardwareMaterial->current_stock >= $quantity) {
             $hardwareMaterial->removeStock(
                 1 * $quantity, 
                 "Zlecenie: {$productionOrder->order_number}"

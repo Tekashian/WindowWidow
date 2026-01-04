@@ -90,6 +90,12 @@ const router = createRouter({
       component: () => import('../views/warehouse/WarehouseDashboard.vue'),
       meta: { requiresAuth: true, requiresRole: ['warehouse', 'admin'] }
     },
+    {
+      path: '/warehouse/materials',
+      name: 'warehouse-materials',
+      component: () => import('../views/warehouse/Materials.vue'),
+      meta: { requiresAuth: true, requiresRole: ['warehouse', 'admin'] }
+    },
     // Admin Panel Routes
     {
       path: '/admin',
