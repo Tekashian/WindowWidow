@@ -181,8 +181,9 @@ class ProductionOrderController extends Controller
     {
         $order = ProductionOrder::with([
             'windows',
-            'items.profile',
-            'items.glass',
+            'items.window',
+            'items.window.profile',
+            'items.window.glass',
             'assignedUser',
             'creator',
             'timeline.creator',
