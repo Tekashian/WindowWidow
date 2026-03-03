@@ -33,11 +33,13 @@ return new class extends Migration
             }
         });
         
-        // Update existing status enum to English
-        DB::statement("ALTER TABLE production_orders MODIFY COLUMN status ENUM('pending', 'materials_check', 'materials_reserved', 'in_progress', 'quality_check', 'completed', 'shipped_to_warehouse', 'delivered', 'cancelled', 'on_hold') DEFAULT 'pending'");
-        
-        // Update existing priority enum to English
-        DB::statement("ALTER TABLE production_orders MODIFY COLUMN priority ENUM('low', 'normal', 'high', 'urgent') DEFAULT 'normal'");
+        // Update existing status enum to English (only for MySQL)
+        if (DB::connection()->getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE production_orders MODIFY COLUMN status ENUM('pending', 'materials_check', 'materials_reserved', 'in_progress', 'quality_check', 'completed', 'shipped_to_warehouse', 'delivered', 'cancelled', 'on_hold') DEFAULT 'pending'");
+            
+            // Update existing priority enum to English
+            DB::statement("ALTER TABLE production_orders MODIFY COLUMN priority ENUM('low', 'normal', 'high', 'urgent') DEFAULT 'normal'");
+        }
     }
 
     /**
@@ -57,8 +59,10 @@ return new class extends Migration
             }
         });
         
-        // Revert to Polish enums
-        DB::statement("ALTER TABLE production_orders MODIFY COLUMN status ENUM('nowe', 'w_trakcie', 'zakonczone', 'anulowane') DEFAULT 'nowe'");
-        DB::statement("ALTER TABLE production_orders MODIFY COLUMN priority ENUM('niska', 'normalna', 'wysoka', 'pilne') DEFAULT 'normalna'");
+        // Revert to Polish enums (only for MySQL)
+        if (DB::connection()->getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE production_orders MODIFY COLUMN status ENUM('nowe', 'w_trakcie', 'zakonczone', 'anulowane') DEFAULT 'nowe'");
+            DB::statement("ALTER TABLE production_orders MODIFY COLUMN priority ENUM('niska', 'normalna', 'wysoka', 'pilne') DEFAULT 'normalna'");
+        }
     }
 };

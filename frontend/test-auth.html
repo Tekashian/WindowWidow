@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        pre { background: #f4f4f4; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Auth Diagnostics</h1>
+    <div id="results"></div>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+        
+        async function runTests() {
+            // Check localStorage
+            log('=== LocalStorage Check ===', 'info');
+            const token = localStorage.getItem('token');
+            const tokenExpiry = localStorage.getItem('tokenExpiry');
+            const user = localStorage.getItem('user');
+            
+            if (!token) {
+                log('❌ No token in localStorage', 'error');
+            } else {
+                log('✅ Token exists: ' + token.substring(0, 20) + '...', 'success');
+            }
+            
+            if (!tokenExpiry) {
+                log('❌ No tokenExpiry in localStorage', 'error');
+            } else {
+                const expiry = parseInt(tokenExpiry);
+                const now = Date.now();
+                const remaining = Math.floor((expiry - now) / 1000 / 60);
+                
+                if (now > expiry) {
+                    log('❌ Token EXPIRED ' + Math.abs(remaining) + ' minutes ago', 'error');
+                } else {
+                    log('✅ Token expires in ' + remaining + ' minutes', 'success');
+                }
+            }
+            
+            if (!user) {
+                log('⚠️ No user in localStorage', 'warning');
+            } else {
+                try {
+                    const userData = JSON.parse(user);
+                    log('✅ User: ' + userData.email + ' (Role: ' + userData.role + ')', 'success');
+                } catch (e) {
+                    log('❌ Invalid user data', 'error');
+                }
+            }
+            
+            // Test API
+            log('\n=== API Test ===', 'info');
+            
+            if (!token) {
+                log('⚠️ Skipping API test - no token', 'warning');
+                return;
+            }
+            
+            try {
+                log('Testing /api/health...', 'info');
+                const healthRes = await fetch('http://127.0.0.1:8000/api/health');
+                if (healthRes.ok) {
+                    log('✅ Health endpoint OK', 'success');
+                } else {
+                    log('❌ Health endpoint failed: ' + healthRes.status, 'error');
+                }
+            } catch (e) {
+                log('❌ Health endpoint error: ' + e.message, 'error');
+            }
+            
+            try {
+                log('Testing /api/me...', 'info');
+                const meRes = await fetch('http://127.0.0.1:8000/api/me', {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                
+                if (meRes.ok) {
+                    const meData = await meRes.json();
+                    log('✅ /me OK: ' + JSON.stringify(meData), 'success');
+                } else {
+                    log('❌ /me failed: ' + meRes.status, 'error');
+                    const errorText = await meRes.text();
+                    log('Error response: ' + errorText, 'error');
+                }
+            } catch (e) {
+                log('❌ /me error: ' + e.message, 'error');
+            }
+            
+            try {
+                log('Testing /api/notifications...', 'info');
+                const notifRes = await fetch('http://127.0.0.1:8000/api/notifications', {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                
+                if (notifRes.ok) {
+                    const notifData = await notifRes.json();
+                    log('✅ /notifications OK: ' + notifData.data.length + ' notifications, ' + notifData.unread_count + ' unread', 'success');
+                } else {
+                    log('❌ /notifications failed: ' + notifRes.status, 'error');
+                    const errorText = await notifRes.text();
+                    log('Error response: ' + errorText, 'error');
+                }
+            } catch (e) {
+                log('❌ /notifications error: ' + e.message, 'error');
+            }
+        }
+        
+        runTests();
+    </script>
+</body>
+</html>
