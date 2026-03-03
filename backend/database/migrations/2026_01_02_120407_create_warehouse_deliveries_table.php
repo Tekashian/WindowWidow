@@ -21,7 +21,7 @@ return new class extends Migration
             $table->enum('status', ['pending', 'in_transit', 'delivered', 'rejected', 'partial'])->default('pending');
             $table->json('items');
             $table->text('notes')->nullable();
-            $table->foreignId('shipped_by')->constrained('users')->onDelete('cascade');
+            $table->foreignId('shipped_by')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignId('received_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamp('shipped_at')->nullable();
             $table->timestamp('received_at')->nullable();

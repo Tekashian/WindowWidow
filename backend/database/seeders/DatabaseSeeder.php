@@ -13,6 +13,10 @@ class DatabaseSeeder extends Seeder
             ProfilesGlassesSeeder::class,
             MaterialsTableSeeder::class,
             WindowsTableSeeder::class,
+            RealisticWindowProductsSeeder::class,
+            WindowProductsSeeder::class,
+            ProductsAndCompanySeeder::class,
+            ProductionAndWarehouseSeeder::class,
         ]);
     }
 }
