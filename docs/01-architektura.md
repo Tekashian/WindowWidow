@@ -71,14 +71,14 @@ rectangle "FRONTEND  \u00b7  Vue 3 + Vite  \u00b7  port 5173" #EBF5FB {
   component "<<router>>\nVue Router 4\nNavigacja + ochrona ról (beforeEach guard)" as ROUTER #BBDEFB
   component "<<view>>\nViews & Components\nSPA — lazy-loaded per panel" as VIEWS #FFFFFF
   component "<<store>>\nPinia Stores\nauth | main | production | warehouse | notifications" as STORES #E3F2FD
-  component "<<http-client>>\nAxios — services/api.js\nBearer token interceptor on every request" as AXIOS #BBDEFB
+  component "<<http-client>>\nAxios clients:\napi.js (interceptor) | productionApi.js\nwarehouseApi.js | notificationApi.js" as AXIOS #BBDEFB
 }
 
 rectangle "BACKEND  \u00b7  Laravel 10  \u00b7  port 8000" #FFF3E0 {
   component "<<middleware>>\nSanctum TokenGuard\n+ CheckRole middleware" as MW #FFE0B2
-  component "<<controller>>\n12 REST Controllers\nJSON-only responses" as CTRL #FFF8E1
+  component "<<controller>>\n14 HTTP Controllers\nJSON-only responses" as CTRL #FFF8E1
   component "<<service>>\nBusiness Logic Layer\nServices/" as SVC #FFFFFF
-  component "<<model>>\nEloquent ORM\n15 Models  |  27 Migrations" as MODELS #FFF3E0
+  component "<<model>>\nEloquent ORM\n16 Models  |  26 Migrations" as MODELS #FFF3E0
   component "<<event-bus>>\nEvents & Listeners\nLowStockAlert | OrderCompleted | ProductionStarted" as EVENTS #FFE0B2
 }
 
@@ -99,9 +99,12 @@ MODELS -down-> DB : SQL queries
 EVENTS ..> MODELS : persists Notification records
 
 note right of AXIOS
-  Vite dev proxy:
-  /api/* → http://localhost:8000
-  Eliminates CORS in development
+  4 dedicated clients (all use /api):
+  api.js          — main, has request+response interceptors
+  productionApi.js — production orders, manual token
+  warehouseApi.js  — deliveries, manual token
+  notificationApi.js — notifications, manual token
+  api.js also handles 401→redirect, 403→log
 end note
 
 note right of MW
@@ -151,14 +154,14 @@ Dzięki temu nie ma CORS errors w developmencie i token nie wycieka przez full U
 vueLavarell/
 ├── backend/                  ← Laravel 10 API
 │   ├── app/
-│   │   ├── Http/Controllers/ ← 12 kontrolerów (odpowiedzi JSON)
-│   │   ├── Models/           ← 15 modeli Eloquent
+│   │   ├── Http/Controllers/ ← 14 kontrolerów (odpowiedzi JSON)
+│   │   ├── Models/           ← 16 modeli Eloquent
 │   │   ├── Middleware/       ← auth:sanctum, role:xxx
 │   │   ├── Services/         ← logika biznesowa
 │   │   ├── Policies/         ← autoryzacja na poziomie modeli
 │   │   └── Exceptions/       ← Handler.php (JSON 401 zamiast redirect)
 │   ├── database/
-│   │   ├── migrations/       ← 27 migracji
+│   │   ├── migrations/       ← 26 migracji
 │   │   └── seeders/          ← dane testowe
 │   └── routes/api.php        ← wszystkie endpointy
 │

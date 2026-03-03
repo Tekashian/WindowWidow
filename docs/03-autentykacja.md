@@ -101,8 +101,11 @@ deactivate AX
 
 note right of AS
   localStorage.setItem('token', '1|abc...')
-  localStorage.setItem('tokenExpiry', now + 30min)
+  localStorage.setItem('tokenExpiry', now + 30min)  ← FRONTEND-only timeout
   localStorage.setItem('user', JSON.stringify(user))
+  
+  Backend token expires after 30 DAYS (Sanctum)
+  Frontend session expires after 30 MINUTES (client check)
 end note
 
 AS --> V  : { success: true }
@@ -118,7 +121,7 @@ group Axios Request Interceptor (automatyczny)
   AX ->  AX : config.headers.Authorization = 'Bearer ' + token
 end
 
-== Wygaśnięcie tokenu (30 min) ==
+== Wygaśnięcie sesji frontend (30 min) ==
 
 U  ->  V  : nawiguje do chronionej strony
 V  ->  AS : isAuthenticated (computed)
@@ -129,17 +132,15 @@ V  ->  V  : router.push('/login')
 @enduml
 ```
 
-## Gdzie token jest przechowywany
+## Ważna różnica: backend vs frontend expiry
 
-```
-localStorage:
-  "token"       → "1|xyz123abc..."      ← aktualny token Sanctum
-  "tokenExpiry" → "1741234567890"       ← timestamp wygaśnięcia (30 min)
-  "user"        → '{"id":1,"role":"admin",...}'
-```
+| | Backend (Sanctum) | Frontend (authStore) |
+|-|-|-|
+| Token żyje przez | **30 dni** | **30 minut** |
+| Ustawiane przez | `createToken(..., now()->addDays(30))` | `Date.now() + 30*60*1000` |
+| Skutek | Token można użyć przez 30 dni | Przeglądarka wylogowuje po 30 min |
 
-> ⚠️ **Uwaga (naprawiony bug)**: Stary kod używał kluczy `"authToken"` i `"auth_token"`.
-> Zostało zunifikowane do `"token"` w commits 4176abb i 08a8f42.
+Użytkownik jest wylogowywany przez frontend po 30 minutach, ale jego token Sanctum jest nadal ważny na backendzie przez 30 dni (aż do restartu sesji lub manulanego wylogowania).
 
 ## Axios interceptor (api.js)
 

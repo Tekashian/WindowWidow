@@ -43,9 +43,9 @@ package "Views  (lazy-loaded per role)" {
 
   component "HomeView\n<<dashboard>>" as HV #E3F2FD
 
-  component "Admin Panel\n/admin/*\nAdminDashboard | WindowsManagement" as AV #EDE7F6
+  component "Admin Panel\n/admin/*\nAdminDashboard | WindowsManagement | WindowForm" as AV #EDE7F6
 
-  component "Production Panel\n/production/*\nDashboard | OrdersList | Details | Issues" as PV #FFEBEE
+  component "Production Panel\n/production/*\nDashboard | OrdersList | OrderDetails\nOrderForm | Issues" as PV #FFEBEE
 
   component "Warehouse Panel\n/warehouse/*\nDashboard | Materials" as WV #E8F5E9
 
@@ -58,18 +58,22 @@ package "Pinia Stores  (reactive global state)" {
 
   component "stores/index.js  (main store)\n─────────────\nstate: materials[], lowStock[]\n       orders[], windows[]\nactions: fetchMaterials(), fetchOrders()..." as MAIN #E3F2FD
 
-  component "productionStore\n─────────────\nstate: orders[], statistics, issues[]\nactions: fetchOrders(), updateStatus()..." as PROD #FFEBEE
+  component "productionStore\n─────────────\nstate: orders[], statistics, issues[], batches[]\nactions: fetchOrders(), startProduction(),\n         createBatch(), shipToWarehouse()..." as PROD #FFEBEE
 
-  component "warehouseStore\n─────────────\nstate: deliveries[], statistics\nactions: fetchDeliveries(), receive()..." as WARE #E8F5E9
+  component "warehouseStore\n─────────────\nstate: deliveries[], statistics{\n  total_deliveries, pending, in_transit,\n  delayed, delivered, rejected}\nactions: fetchDeliveries(), shipDelivery(),\n         receiveDelivery(), rejectDelivery()..." as WARE #E8F5E9
 
-  component "notificationStore\n─────────────\nstate: notifications[], unreadCount\nactions: fetchAll(), markRead()..." as NOTIF #F3E5F5
+  component "notificationStore\n─────────────\nstate: notifications[], unreadCount\nactions: fetchAll(), markRead(),\n         markAllRead(), deleteRead()..." as NOTIF #F3E5F5
 }
 
 ' ── HTTP SERVICES ───────────────────────────────────
-package "HTTP Services" {
-  component "services/api.js\n─────────────\nAxios instance\nbaseURL = '/api'\ninterceptor: inject Bearer token\nhandles 401 → logout" as API #FFF8E1
+package "HTTP Services  (4 Axios clients)" {
+  component "services/api.js\n─────────────\nAxios instance, baseURL = '/api'\nrequest interceptor: inject Bearer token\nresponse interceptor:\n  401 → localStorage.clear + redirect /login\n  403 / 404 / 5xx → console.error\nused by: authStore, main store" as API #FFF8E1
 
-  component "services/warehouseApi.js\n─────────────\nDedicated warehouse client\nAPI_BASE = '/api'\nManual token from localStorage" as WAPI #FFF8E1
+  component "services/productionApi.js\n─────────────\nAPI_BASE = '/api'\nManual token from localStorage\nused by: productionStore" as PRODAPI #FFEBEE
+
+  component "services/warehouseApi.js\n─────────────\nAPI_BASE = '/api'\nManual token from localStorage\nused by: warehouseStore" as WAPI #E8F5E9
+
+  component "services/notificationApi.js\n─────────────\nAPI_URL = '/api'\nManual token from localStorage\nused by: notificationStore" as NAPI #F3E5F5
 }
 
 ' ── ROUTER GUARD ────────────────────────────────────
@@ -83,27 +87,27 @@ LV -down-> AUTH  : login() on submit
 HV   -down-> MAIN  : fetchMaterials(), fetchOrders()
 HV   -down-> NOTIF : fetchNotifications()
 AV   -down-> MAIN  : fetchWindows()
-PV   -down-> PROD  : fetchOrders(), updateStatus()
+PV   -down-> PROD  : fetchOrders(), updateStatus()\ncreateOrder(), shipToWarehouse()
 WV   -down-> WARE  : fetchDeliveries(), receive()
 SV   -down-> MAIN  : shared reads
 
-AUTH -down-> API  : uses
-MAIN -down-> API  : uses
-PROD -down-> API  : uses
-NOTIF -down-> API : uses
-WARE -down-> WAPI : uses
+AUTH  -down-> API    : authAPI.login/logout/me
+MAIN  -down-> API    : materialsAPI, dashboardAPI
+PROD  -down-> PRODAPI : all production calls
+WARE  -down-> WAPI   : all warehouse calls
+NOTIF -down-> NAPI   : all notification calls
 
 GUARD ..> LV : guards
 GUARD ..> HV : guards
-GUARD ..> AV : guards (role: admin)
-GUARD ..> PV : guards (role: production|admin)
-GUARD ..> WV : guards (role: warehouse|admin)
+GUARD ..> AV : guards (requiresRole: admin)
+GUARD ..> PV : guards (requiresRole: production|admin)
+GUARD ..> WV : guards (requiresRole: warehouse|admin)
 
 note bottom of API
-  response.data.data
-  ── Każda lista jest paginowana przez Laravel:
+  response.data.data — Laravel paginacja:
   { data: [...], current_page, total, per_page }
-  Dlatego NIE response.data ale response.data.data
+  fetchOrders(): response.data.data || response.data
+  fetchDeliveries(): response.data.data ?? response.data
 end note
 @enduml
 ```
@@ -129,34 +133,37 @@ const isAuthenticated = computed(() => {
 
 ---
 
-## Pinia — stores/index.js (główny store danych)
+## Pinia — warehouseStore (zaktualizowany)
 
 ```javascript
-// stores/index.js
-async function fetchMaterials() {
-  const response = await api.get('/materials')
-  materials.value = response.data.data ?? response.data  // ← unwrap paginacji!
+// stores/warehouseStore.js
+statistics: {
+  total_deliveries: 0,
+  pending: 0,
+  in_transit: 0,
+  delayed: 0,
+  delivered_today: 0,
+  delivered: 0,   // ← dodane
+  rejected: 0     // ← dodane
 }
 ```
 
-> ⚠️ **Ważne**: Laravel zwraca paginację `{ data: [...], current_page: 1, total: 50 }`.  
-> Dlatego `response.data.data` — pierwsze `.data` to Axios, drugie `.data` to Laravel pagination.
+`fetchStatistics()` odpyta `GET /api/warehouse/deliveries/statistics` — backend
+now returns all 7 fields (was missing `total_deliveries`, `delivered`, `rejected`).
 
 ---
 
-## Jak działa żądanie HTTP (krok po kroku)
+## 4 klienty Axios (nie jeden!)
 
-```
-1. Komponent wywołuje store.fetchMaterials()
-2. Store wywołuje api.get('/materials')
-3. Axios interceptor dodaje nagłówek:
-   Authorization: Bearer <token z localStorage>
-4. Vite proxy przekierowuje /api/materials → http://localhost:8000/api/materials
-5. Laravel sprawdza token (Sanctum middleware)
-6. Kontroler odpowiada JSON z paginacją
-7. Store zapisuje response.data.data do state
-8. Komponent reaktywnie re-renderuje się przez Vue reactivity
-```
+| Plik | Kto używa | Interceptor | Token |
+|------|------------|-------------|-------|
+| `services/api.js` | authStore, main store | request + response | interceptor |
+| `services/productionApi.js` | productionStore | brak | ręcznie z localStorage |
+| `services/warehouseApi.js` | warehouseStore | brak | ręcznie z localStorage |
+| `services/notificationApi.js` | notificationStore | brak | ręcznie z localStorage |
+
+Tylko `api.js` ma interceptor odpowiedzi (401 → redirect `/login`, 403 → log).
+Pozostałe 3 klienty używają `getAuthHeaders()` / ręcznego `localStorage.getItem('token')`.
 
 ---
 

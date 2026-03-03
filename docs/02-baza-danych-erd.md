@@ -37,6 +37,7 @@ entity "users" as users #EDE7F6 {
   email        : VARCHAR(255) <<UNIQUE>>
   password     : VARCHAR(255) <<bcrypt>>
   role         : ENUM(admin, production, warehouse)
+  is_active    : BOOLEAN
   created_at   : TIMESTAMP
 }
 
@@ -108,10 +109,13 @@ entity "materials" as materials #FFF8E1 {
   * id             : BIGINT  <<PK>>
   --
   name             : VARCHAR
-  unit             : VARCHAR  ' kg, m, szt
-  quantity         : DECIMAL(10,2)
+  type             : ENUM(profil, szyba, okucie,\n              uszczelka, inne)
+  unit             : VARCHAR  ' m, m2, szt, kg
+  current_stock    : DECIMAL(10,2)
   min_stock        : DECIMAL(10,2)  ' alert threshold
   price_per_unit   : DECIMAL(10,2)
+  supplier         : VARCHAR  ' nullable
+  is_active        : BOOLEAN
 }
 
 entity "stock_movements" as stock_movements #FFF8E1 {
@@ -126,27 +130,77 @@ entity "stock_movements" as stock_movements #FFF8E1 {
 }
 
 ' ─────────────────────────────
+' PRODUCT DEFINITIONS & COMPANY
+' ─────────────────────────────
+entity "products" as products #F3E5F5 {
+  * id                          : BIGINT  <<PK>>
+  --
+  name                          : VARCHAR
+  code                          : VARCHAR  <<UNIQUE>>
+  type                          : ENUM(window, door,\n             panel, balcony)
+  description                   : TEXT
+  default_specifications        : JSON
+  estimated_production_days     : INT
+  is_active                     : BOOLEAN
+}
+
+entity "company_settings" as company_settings #F3E5F5 {
+  * id               : BIGINT  <<PK>>
+  --
+  company_name       : VARCHAR
+  tax_id             : VARCHAR  ' NIP
+  address            : VARCHAR
+  city               : VARCHAR
+  phone              : VARCHAR
+  email              : VARCHAR
+  warehouse_address  : VARCHAR
+  warehouse_city     : VARCHAR
+}
+
+' ─────────────────────────────
 ' PRODUCTION
 ' ─────────────────────────────
 entity "production_orders" as prod_orders #FFEBEE {
-  * id                 : BIGINT  <<PK>>
+  * id                          : BIGINT  <<PK>>
   --
-  * created_by         : BIGINT  <<FK → users>>
-  order_number         : VARCHAR  <<UNIQUE>>
-  status               : ENUM(pending, confirmed,\n                              in_progress, completed,\n                              cancelled)
-  deadline             : DATE
-  progress_percentage  : TINYINT  ' 0–100
-  started_at           : DATETIME
-  completed_at         : DATETIME
+  * created_by                  : BIGINT  <<FK → users>>
+  order_number                  : VARCHAR  <<UNIQUE>>
+  status                        : ENUM(pending, materials_check,\n         materials_reserved, in_progress,\n         quality_check, completed,\n         shipped_to_warehouse, delivered,\n         cancelled, on_hold)   DEFAULT pending
+  priority                      : ENUM(low, normal, high, urgent)
+  source_type                   : ENUM(customer_order,\n                stock_replenishment)
+  customer_name                 : VARCHAR  ' nullable
+  product_type                  : VARCHAR  ' from products.name
+  quantity                      : INT
+  confirmed_by_production       : BOOLEAN  DEFAULT false
+  is_delayed                    : BOOLEAN  DEFAULT false
+  production_time_hours         : INT  ' nullable
+  estimated_warehouse_delivery_date : DATETIME  ' nullable
+  started_at                    : DATETIME
+  actual_completion_at          : DATETIME
+  estimated_completion_at       : DATETIME
+}
+
+entity "production_order_items" as prod_items #FFEBEE {
+  * id                     : BIGINT  <<PK>>
+  --
+  * production_order_id    : BIGINT  <<FK>>
+  * window_id              : BIGINT  <<FK>>
+  quantity                 : INT
+  status                   : ENUM(pending, in_progress,\n                completed)  DEFAULT pending
 }
 
 entity "production_batches" as prod_batches #FFEBEE {
   * id                    : BIGINT  <<PK>>
   --
   * production_order_id   : BIGINT  <<FK>>
-  batch_number            : VARCHAR
+  batch_number            : VARCHAR  <<UNIQUE>>
   quantity                : INT
-  status                  : ENUM(pending, in_progress, completed)
+  status                  : ENUM(in_production, quality_check,\n              ready, shipped, rejected)
+  quality_check_passed    : BOOLEAN  ' nullable
+  quality_notes           : TEXT
+  started_at              : DATETIME
+  completed_at            : DATETIME
+  shipped_at              : DATETIME
 }
 
 entity "production_issues" as prod_issues #FFEBEE {
@@ -154,19 +208,40 @@ entity "production_issues" as prod_issues #FFEBEE {
   --
   * production_order_id   : BIGINT  <<FK>>
   * reported_by           : BIGINT  <<FK → users>>
-  title                   : VARCHAR
+  issue_type              : ENUM(material_shortage,\n     equipment_failure,\n     quality_defect, other)
   severity                : ENUM(low, medium, high, critical)
   status                  : ENUM(open, in_progress, resolved)
+  description             : TEXT
+  impact                  : ENUM(none, minimal, moderate, severe)
   resolved_at             : DATETIME
+}
+
+entity "production_timeline" as prod_timeline #FFEBEE {
+  * id                     : BIGINT  <<PK>>
+  --
+  * production_order_id    : BIGINT  <<FK>>
+  * created_by             : BIGINT  <<FK → users>>
+  status                   : VARCHAR  ' snapshot of order status
+  notes                    : TEXT
+  estimated_completion     : TIMESTAMP  ' nullable
+  delay_reason             : VARCHAR    ' nullable
+  created_at               : TIMESTAMP
 }
 
 entity "warehouse_deliveries" as wh_deliveries #FFF8E1 {
   * id                    : BIGINT  <<PK>>
   --
   * production_order_id   : BIGINT  <<FK>>
-  * received_by           : BIGINT  <<FK → users>>
-  status                  : ENUM(pending, in_transit,\n                                delivered, rejected)
+  * batch_id              : BIGINT  <<FK nullable>>
+  delivery_number         : VARCHAR  <<UNIQUE>>
+  expected_delivery_date  : DATE
+  actual_delivery_date    : DATE  ' nullable
+  status                  : ENUM(pending, in_transit,\n         delivered, rejected, partial)
+  items                   : JSON
+  notes                   : TEXT
   rejection_reason        : TEXT
+  shipped_by              : BIGINT  <<FK nullable → users>>
+  received_by             : BIGINT  <<FK nullable → users>>
   shipped_at              : DATETIME
   received_at             : DATETIME
 }
@@ -174,11 +249,16 @@ entity "warehouse_deliveries" as wh_deliveries #FFF8E1 {
 entity "notifications" as notifications #F3E5F5 {
   * id          : BIGINT  <<PK>>
   --
-  * user_id     : BIGINT  <<FK>>
-  type          : VARCHAR  ' LowStock | OrderCompleted
+  * user_id     : BIGINT  <<FK nullable>>
+  type          : VARCHAR  ' production | warehouse | admin | system
   title         : VARCHAR
   message       : TEXT
-  is_read       : BOOLEAN  DEFAULT false
+  data          : JSON     ' additional context (IDs, links)
+  priority      : ENUM(low, normal, high, critical)
+  icon          : VARCHAR  ' nullable — emoji/icon name
+  link          : VARCHAR  ' nullable — URL to navigate to
+  read          : BOOLEAN  DEFAULT false
+  read_at       : TIMESTAMP
   created_at    : TIMESTAMP
 }
 
@@ -188,8 +268,9 @@ entity "notifications" as notifications #F3E5F5 {
 users           ||--o{  prod_orders       : "creates"
 users           ||--o{  stock_movements   : "performs"
 users           ||--o{  prod_issues       : "reports"
-users           ||--o{  wh_deliveries     : "receives"
+users           ||--o{  wh_deliveries     : "ships/receives"
 users           ||--o{  notifications     : "owns"
+users           ||--o{  prod_timeline     : "records"
 
 profiles        ||--o{  windows           : "used by"
 glasses         ||--o{  windows           : "used by"
@@ -199,9 +280,13 @@ order_items     }o--||  windows           : "references"
 
 materials       ||--o{  stock_movements   : "tracked in"
 
+prod_orders     ||--o{  prod_items        : "has items"
+prod_items      }o--||  windows           : "specifies"
 prod_orders     ||--o{  prod_batches      : "divided into"
 prod_orders     ||--o{  prod_issues       : "has"
+prod_orders     ||--o{  prod_timeline     : "logged in"
 prod_orders     ||--o{  wh_deliveries     : "ships to"
+prod_batches    ||--o{  wh_deliveries     : "carried by"
 @enduml
 ```
 
@@ -235,7 +320,7 @@ Relacja many-to-many przez `order_items`:
 ---
 
 ### `materials` + `stock_movements` — Magazyn surowców
-- `materials` → surowce (profile aluminiowe, szkło, uszczelki, śruby...)
+- `materials` → surowce: typ (profil/szyba/okucie/uszczelka/inne), pole `current_stock` to bieżący stan
 - `stock_movements` → każda zmiana stanu (IN dodanie, OUT zużycie) jest logowana
 
 ---
@@ -243,13 +328,16 @@ Relacja many-to-many przez `order_items`:
 ### `production_orders` — Zlecenia produkcyjne
 Klucz systemu. Stanami steruje się przez dedykowane API endpointy (nie przez UPDATE bezpośredni).
 
-Statusy: `pending → confirmed → in_progress → completed` (lub `cancelled`)
+Statusy: `pending → (materials_check → materials_reserved) → in_progress → (quality_check) → completed → shipped_to_warehouse` (lub `on_hold`, `cancelled`)
+
+Flaga `confirmed_by_production` (BOOLEAN) ustawiana przez `/confirm` — **nie zmienia statusu**.
 
 ---
 
 ### `production_batches` — Partie produkcyjne
 Jedno zlecenie może być podzielone na kilka partii (np. 100 okien w 3 partiach po 33-34 szt).
-
+Statusy partii: `in_production → quality_check → ready → shipped` (lub `rejected`).
+Dopiero gdy partia ma status `ready`, można ją wysłać do magazynu (`ship-to-warehouse`).
 ---
 
 ### `production_issues` — Problemy w produkcji
@@ -259,9 +347,9 @@ Rozwiązanie zmienia `status` na `resolved`.
 ---
 
 ### `warehouse_deliveries` — Dostawy do magazynu
-Tworzone automatycznie gdy produkcja wywołuje `ship-to-warehouse`.  
-Magazynierzy potwierdzają `receive` → aktualizuje `stock_movements`.
-
+Tworzone przez produkcję gdy wywołuje `ship-to-warehouse` (wymaga partii w statusie `ready`).
+Statusy: `pending → in_transit → delivered` (lub `rejected` / `partial`).
+Magazynierzy potwierdzają `receive` lub `reject` z podaniem powodu.
 ---
 
 ### `notifications` — Powiadomienia w systemie

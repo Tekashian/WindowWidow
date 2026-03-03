@@ -109,11 +109,14 @@ AD --> UC_NOTIF
 ' ── production ──
 PR --> UC_ORD_R
 PR --> UC_PO_R
+PR --> UC_PO_C
 PR --> UC_PO_A
 PR --> UC_PO_B
 PR --> UC_SHIP
 PR --> UC_DASH
 PR --> UC_NOTIF
+
+note "Backend (api.php) allows\nrole:production,admin\nfor POST /production/orders.\nFrontend router restricts\n/production/orders/new\nto admin only (inconsistency)" as N_DISCREPANCY
 
 ' ── warehouse ──
 WH --> UC_MAT_R
@@ -187,7 +190,7 @@ if (!requiredRoles.includes(userRole)) {
 | Przeglądaj materiały | ✅ | ❌ | ✅ |
 | Dodaj/usuń materiał | ✅ | ❌ | ✅ |
 | Dodaj/pobierz stock materiału | ✅ | ❌ | ✅ |
-| Utwórz zlecenie produkcyjne | ✅ | ❌ | ❌ |
+| Utwórz zlecenie produkcyjne | ✅ | ✅* | ❌ |
 | Potwierdź zlecenie | ✅ | ✅ | ❌ |
 | Wystartuj produkcję | ✅ | ✅ | ❌ |
 | Utwórz partię / zgłoś problem | ✅ | ✅ | ❌ |
@@ -195,3 +198,4 @@ if (!requiredRoles.includes(userRole)) {
 | Odbierz dostawę | ✅ | ❌ | ✅ |
 | Panel Admin (/admin/*) | ✅ | ❌ | ❌ |
 | Dashboard | ✅ | ✅ | ✅ |
+> **\*** Backend (`api.php`: `role:production,admin`) zezwala produkcji na `POST /production/orders`. Frontend router (`requiresRole: ['admin']`) blokuje `/production/orders/new` — niespójność do zadresowania.
