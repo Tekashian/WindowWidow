@@ -178,14 +178,14 @@ class ProductionOrder extends Model
     public function start(): void
     {
         $this->update([
-            'status' => 'w_trakcie',
+            'status' => 'in_progress',
             'started_at' => now(),
         ]);
 
-        // Zmień status wszystkich okien na "w produkcji"
+        // Update all window items to in_progress
         foreach ($this->items as $item) {
             if ($item->window) {
-                $item->window->update(['status' => 'w_produkcji']);
+                $item->window->update(['status' => 'in_production']);
             }
         }
     }
@@ -193,14 +193,14 @@ class ProductionOrder extends Model
     public function complete(): void
     {
         $this->update([
-            'status' => 'zakonczone',
+            'status' => 'completed',
             'completed_at' => now(),
         ]);
 
-        // Zmień status wszystkich okien na "gotowe"
+        // Update all window items to ready
         foreach ($this->items as $item) {
             if ($item->window) {
-                $item->window->update(['status' => 'gotowe']);
+                $item->window->update(['status' => 'ready']);
             }
         }
 

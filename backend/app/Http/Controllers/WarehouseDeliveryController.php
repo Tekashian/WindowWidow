@@ -175,12 +175,15 @@ class WarehouseDeliveryController extends Controller
     public function statistics()
     {
         $stats = [
+            'total_deliveries' => WarehouseDelivery::count(),
             'pending' => WarehouseDelivery::pending()->count(),
             'in_transit' => WarehouseDelivery::inTransit()->count(),
             'delayed' => WarehouseDelivery::delayed()->count(),
             'delivered_today' => WarehouseDelivery::where('status', 'delivered')
                 ->whereDate('received_at', today())
-                ->count()
+                ->count(),
+            'delivered' => WarehouseDelivery::where('status', 'delivered')->count(),
+            'rejected' => WarehouseDelivery::where('status', 'rejected')->count(),
         ];
 
         return new JsonResponse($stats);

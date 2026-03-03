@@ -6,10 +6,13 @@ export const useWarehouseStore = defineStore('warehouse', {
     deliveries: [],
     currentDelivery: null,
     statistics: {
+      total_deliveries: 0,
       pending: 0,
       in_transit: 0,
       delayed: 0,
-      delivered_today: 0
+      delivered_today: 0,
+      delivered: 0,
+      rejected: 0
     },
     loading: false,
     error: null

@@ -24,8 +24,8 @@ class ProductionOrderService
             // Utworzenie zlecenia
             $productionOrder = ProductionOrder::create([
                 'order_number' => $this->generateOrderNumber(),
-                'status' => 'nowe',
-                'priority' => $data['priority'] ?? 'normalna',
+                'status' => 'pending',
+                'priority' => $data['priority'] ?? 'normal',
                 'notes' => $data['notes'] ?? null,
                 'assigned_to' => $data['assigned_to'] ?? null,
             ]);
@@ -36,7 +36,7 @@ class ProductionOrderService
                     'production_order_id' => $productionOrder->id,
                     'window_id' => $item['window_id'],
                     'quantity' => $item['quantity'],
-                    'status' => 'oczekujace',
+                    'status' => 'pending',
                 ]);
             }
 
@@ -55,7 +55,7 @@ class ProductionOrderService
     public function startProduction(ProductionOrder $productionOrder): void
     {
         // Walidacja: sprawdź czy zlecenie może być rozpoczęte
-        if (in_array($productionOrder->status, ['w_trakcie', 'zakonczone', 'anulowane'])) {
+        if (in_array($productionOrder->status, ['in_progress', 'completed', 'cancelled'])) {
             throw new Exception("Nie można rozpocząć produkcji. Zlecenie ma już status: {$productionOrder->status}");
         }
 
@@ -120,10 +120,10 @@ class ProductionOrderService
         
         // Dodaj bufor czasowy w zależności od priorytetu
         $priorityMultiplier = match($productionOrder->priority) {
-            'pilne' => 0.8,  // przyspieszona produkcja
-            'wysoka' => 0.9,
-            'normalna' => 1.0,
-            'niska' => 1.2,
+            'urgent' => 0.8,  // accelerated production
+            'high' => 0.9,
+            'normal' => 1.0,
+            'low' => 1.2,
             default => 1.0,
         };
         
@@ -217,6 +217,6 @@ class ProductionOrderService
      */
     private function generateOrderNumber(): string
     {
-        return 'ZP-' . now()->format('YmdHis');
+        return 'PRD-' . now()->format('YmdHis');
     }
 }
