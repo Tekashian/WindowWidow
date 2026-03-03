@@ -39,7 +39,7 @@ export const useMaterialStore = defineStore('materials', () => {
     error.value = null
     try {
       const response = await materialsAPI.getAll()
-      materials.value = response.data
+      materials.value = response.data.data ?? response.data
     } catch (err) {
       error.value = err.message
     } finally {
@@ -50,7 +50,7 @@ export const useMaterialStore = defineStore('materials', () => {
   async function fetchLowStock() {
     try {
       const response = await materialsAPI.getLowStock()
-      lowStockMaterials.value = response.data
+      lowStockMaterials.value = response.data.data ?? response.data
     } catch (err) {
       console.error('Failed to fetch low stock:', err)
     }
@@ -100,7 +100,7 @@ export const useProductionOrderStore = defineStore('productionOrders', () => {
     error.value = null
     try {
       const response = await productionOrdersAPI.getAll()
-      orders.value = response.data
+      orders.value = response.data.data ?? response.data
     } catch (err) {
       error.value = err.message
     } finally {

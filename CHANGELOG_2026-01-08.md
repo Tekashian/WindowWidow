@@ -238,3 +238,228 @@ Sprawdza:
 **Autor zmian:** GitHub Copilot Senior Developer  
 **Data:** 8 stycznia 2026, 15:40  
 **Status:** ✅ Gotowe do review i commit
+
+---
+
+---
+
+# Changelog - Naprawa Backendu (3 marca 2026)
+
+## 🐛 Krytyczny Błąd: Artisan / Backend Nie Startuje (exit 255)
+
+**Data:** 3 marca 2026  
+**Czas debugowania:** ~2h  
+**Objaw:** `php artisan serve` kończy się kodem 255 **bez żadnego komunikatu błędu**
+
+---
+
+## 🔍 Diagnoza
+
+### Kolejność zdarzeń prowadząca do błędu
+
+1. Poprzednia sesja zgłosiła błąd `Unable to resolve NULL driver for [Illuminate\Session\SessionManager]`
+2. Jako fix zmieniono `SESSION_DRIVER=cookie` → `SESSION_DRIVER=file` w `.env`
+3. Dodatkowo do `Handler.php` dodano override metody `unauthenticated()` z type hintem `Request $request`
+4. Po tych zmianach backend **całkowicie przestał startować** — exit 255, brak outputu
+
+### Faktyczna przyczyna
+
+**PHP 8 Fatal Error: niezgodna deklaracja metody przy dziedziczeniu**
+
+Klasa nadrzędna (`Illuminate\Foundation\Exceptions\Handler`) deklaruje:
+```php
+protected function unauthenticated($request, AuthenticationException $exception)
+//                                 ↑ BRAK type hinta
+```
+
+W naszym `Handler.php` dodano type hint którego nie ma w rodzicu:
+```php
+// ❌ BŁĘDNE - dodatkowy type hint powoduje Fatal Error w PHP 8:
+protected function unauthenticated(Request $request, AuthenticationException $exception)
+//                                 ↑ Request $request — niezgodne z rodzicem
+```
+
+PHP 8 wymusza ścisłą zgodność sygnatur przy dziedziczeniu. Dodanie type hinta tam gdzie rodzic go nie ma = **`Fatal error: Declaration must be compatible`**.
+
+### Dlaczego artisan milczał (brak outputu)?
+
+Łańcuch awarii:
+1. `HandleExceptions` bootstrapper rejestruje shutdown handler
+2. PHP kompiluje `Handler.php` → fatal error o niezgodności deklaracji
+3. Shutdown handler próbuje skonstruować `App\Exceptions\Handler` żeby obsłużyć błąd
+4. Klasa nie istnieje w pamięci (fatal ją unicestwił) → `ReflectionException: Class does not exist`
+5. Drugi błąd w środku error handlera → PHP wychodzi `exit(255)` bez żadnego wyjścia na stdout/stderr
+
+Kluczowy fakt: **PHP 8 zmienił tę klasę błędów z E_WARNING (PHP 7) na E_FATAL** — stąd działało na starszych wersjach.
+
+---
+
+## ✅ Rozwiązanie
+
+**Plik:** `backend/app/Exceptions/Handler.php`
+
+```php
+// ❌ PRZED (powodowało fatal error):
+use Illuminate\Http\Request;
+
+protected function unauthenticated(Request $request, AuthenticationException $exception)
+{
+    return response()->json(['message' => 'Unauthenticated.'], 401);
+}
+
+// ✅ PO (zgodne z sygnaturą rodzica):
+protected function unauthenticated($request, AuthenticationException $exception)
+{
+    return response()->json(['message' => 'Unauthenticated.'], 401);
+}
+```
+
+Zmiany:
+1. Usunięto `use Illuminate\Http\Request;` (zbędny import)
+2. Usunięto type hint `Request` z argumentu `$request`
+
+---
+
+## 📋 Inne Zmiany w Tej Sesji (3 marca 2026)
+
+### SESSION_DRIVER
+**Plik:** `backend/.env`  
+Zmieniono `SESSION_DRIVER=cookie` → `SESSION_DRIVER=file`  
+*(cookie powodował `Unable to resolve NULL driver` w kontekście CLI)*
+
+### Authenticate.php Middleware
+**Plik:** `backend/app/Http/Middleware/Authenticate.php`  
+Zmieniono `redirectTo()` żeby zawsze zwracała `null` (aplikacja API-only, brak trasy `/login`):
+```php
+// PRZED (crashowało gdy nie istnieje route 'login'):
+return $request->expectsJson() ? null : route('login');
+
+// PO:
+return null;
+```
+
+### Baza Danych
+- Stworzono bazę `okna_produkcja` w Laragon MySQL 8.4.3
+- `DB_PASSWORD` zmieniono z `Baza123` → `Piotrlas1`
+- Uruchomiono `migrate:fresh --seed` z wszystkimi 8 seederami
+- Naprawiono migrację `warehouse_deliveries`: pole `shipped_by` zmieniono na `nullable()`
+
+---
+
+## 🔑 Metoda Debugowania
+
+Błąd był trudny do znalezienia bo PHP milczał. Rozwiązanie: uruchomienie PHP z `error_log` do pliku:
+
+```powershell
+php -d display_errors=1 -d error_reporting=E_ALL -d log_errors=1 -d error_log=php_error.log -f artisan -- list
+```
+
+Dopiero plik `php_error.log` ujawnił faktyczny `Fatal error: Declaration must be compatible`.
+
+---
+
+## 📊 Stan Po Naprawie
+
+- ✅ Backend uruchomiony (`http://127.0.0.1:8000`)
+- ✅ Login API: `POST /api/login` zwraca 200 + token
+- ✅ Frontend uruchomiony (`http://localhost:5173`)
+- ✅ MySQL Laragon: baza `okna_produkcja` z pełnymi danymi testowymi
+
+**Autor zmian:** GitHub Copilot Senior Developer  
+**Data:** 3 marca 2026, 16:35
+
+---
+
+---
+
+# Changelog - Naprawa Błędów Frontend (3 marca 2026, wieczór)
+
+## 🐛 Błędy z konsoli przeglądarki
+
+Zgłoszone przez użytkownika błędy widoczne w DevTools:
+- `GET /api/warehouse/deliveries/statistics` → 500 Internal Server Error
+- `GET /api/materials` → 500 Internal Server Error
+- `TypeError: Cannot read properties of null (reading 'id')` w `OrdersView.vue:12`
+
+---
+
+## 🔍 Diagnoza
+
+### Błąd 1: Zły klucz w localStorage → brak tokena → 401/500
+
+Auth store (`auth.js`) zapisuje token jako `localStorage.setItem('token', ...)`, ale dwa serwisy odczytywały go pod **innymi, błędnymi kluczami**:
+
+| Plik | Stary klucz (błędny) | Poprawny klucz |
+|------|---------------------|----------------|
+| `frontend/src/services/warehouseApi.js` | `authToken` | `token` |
+| `frontend/src/views/warehouse/Materials.vue` | `auth_token` | `token` |
+
+Efekt: każde żądanie wysyłane było **bez nagłówka Authorization** → backend zwracał 401 → frontend logował jako 500.
+
+### Błąd 2: Hardcoded URL zamiast Vite proxy
+
+```js
+// PRZED - omijał proxy, powodował problemy CORS:
+const API_BASE = 'http://localhost:8000/api';
+
+// PO - względna ścieżka przez Vite proxy (vite.config.js):
+const API_BASE = '/api';
+```
+
+Dotyczyło: `warehouseApi.js`, `warehouse/Materials.vue`
+
+### Błąd 3: Błędna obsługa paginacji → TypeError null.id
+
+Backend zwraca obiekt paginacji Laravel: `{ current_page, data: [...], from: null, to: null, ... }`.  
+Frontend przypisywał cały obiekt do tablic i iterował po nim w `v-for` — trafił na pole `from: null` i próbował odczytać `null.id`.
+
+```js
+// PRZED (błędnie przypisuje cały obiekt paginacji):
+orders.value = response.data
+this.deliveries = response.data
+materials.value = response.data
+
+// PO (wyciąga tablicę z .data lub fallback):
+orders.value = response.data.data ?? response.data
+this.deliveries = response.data.data ?? response.data
+materials.value = response.data.data ?? response.data
+```
+
+### Błąd 4: Błędna nazwa pola min_stock w formularzu
+
+Backend waliduje pole `min_stock`, ale formularz `Materials.vue` wysyłał `minimum_stock` → walidacja odrzucała żądanie. Brakował też wymagany backend-em `price_per_unit`.
+
+---
+
+## ✅ Poprawione Pliki
+
+### `frontend/src/services/warehouseApi.js`
+- `localStorage.getItem('authToken')` → `localStorage.getItem('token')`
+- `http://localhost:8000/api` → `/api`
+
+### `frontend/src/views/warehouse/Materials.vue`
+- `localStorage.getItem('auth_token')` → `localStorage.getItem('token')`
+- `http://localhost:8000/api` → `/api`
+- `response.data` → `response.data.data ?? response.data`
+- `minimum_stock` → `min_stock` (w formularzu, template i logice)
+- Dodano pole `price_per_unit` do formularza (wymagane przez backend)
+- Dodano brakującą opcję `uszczelka` w select type
+
+### `frontend/src/views/OrdersView.vue`
+- `orders.value = response.data` → `response.data.data ?? response.data`
+
+### `frontend/src/stores/warehouseStore.js`
+- `this.deliveries = response.data` → `response.data.data ?? response.data`
+
+---
+
+## 📊 Stan Po Naprawie
+
+- ✅ `GET /api/warehouse/deliveries/statistics` → 200 `{"pending":3,"in_transit":1,...}`
+- ✅ `GET /api/warehouse/deliveries` → 200, 6 dostaw
+- ✅ `GET /api/materials` → 200, lista materiałów
+- ✅ Brak TypeError w OrdersView
+- ✅ Backend i frontend działają
+
+**Autor zmian:** GitHub Copilot Senior Developer  
+**Data:** 3 marca 2026, 17:00

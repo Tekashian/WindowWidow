@@ -9,6 +9,8 @@ class Authenticate extends Middleware
 {
     protected function redirectTo(Request $request): ?string
     {
-        return $request->expectsJson() ? null : route('login');
+        // This is an API-only app - never redirect, always return null
+        // The Handler::unauthenticated() will return JSON 401
+        return null;
     }
 }

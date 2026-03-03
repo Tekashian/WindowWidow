@@ -52,7 +52,7 @@ const loadOrders = async () => {
   error.value = null
   try {
     const response = await ordersAPI.getAll()
-    orders.value = response.data
+    orders.value = response.data.data ?? response.data
   } catch (err) {
     error.value = 'Nie udało się załadować danych: ' + err.message
   } finally {

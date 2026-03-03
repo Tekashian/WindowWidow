@@ -48,7 +48,7 @@ export const useWarehouseStore = defineStore('warehouse', {
       this.error = null;
       try {
         const response = await warehouseApi.getDeliveries(filters);
-        this.deliveries = response.data;
+        this.deliveries = response.data.data ?? response.data;
         return response.data;
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to fetch deliveries';

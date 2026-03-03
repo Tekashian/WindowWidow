@@ -253,7 +253,7 @@ const error = ref(null)
 const loadWindows = async () => {
   try {
     const response = await api.get('/windows')
-    windows.value = response.data
+    windows.value = response.data.data ?? response.data
     console.log('Loaded windows:', windows.value)
   } catch (err) {
     console.error('Error loading windows:', err)

@@ -18,7 +18,8 @@
         
         <div class="material-info">
           <p><strong>Typ:</strong> {{ material.type }}</p>
-          <p><strong>Min. stan:</strong> {{ material.minimum_stock }} {{ material.unit }}</p>
+          <p><strong>Min. stan:</strong> {{ material.min_stock }} {{ material.unit }}</p>
+          <p v-if="material.price_per_unit"><strong>Cena/jed.:</strong> {{ material.price_per_unit }} zł</p>
           <p v-if="material.supplier"><strong>Dostawca:</strong> {{ material.supplier }}</p>
         </div>
 
@@ -68,7 +69,12 @@
 
           <div class="form-group">
             <label>Minimalny stan:</label>
-            <input v-model.number="newMaterial.minimum_stock" type="number" step="0.01" required class="form-input" />
+            <input v-model.number="newMaterial.min_stock" type="number" step="0.01" required class="form-input" />
+          </div>
+
+          <div class="form-group">
+            <label>Cena za jednostkę (zł):</label>
+            <input v-model.number="newMaterial.price_per_unit" type="number" step="0.01" required class="form-input" />
           </div>
 
           <div class="form-group">
@@ -136,7 +142,7 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = '/api';
 const materials = ref([]);
 const showAddModal = ref(false);
 const showAddStockModal = ref(false);
@@ -148,7 +154,8 @@ const newMaterial = ref({
   type: 'profil',
   unit: 'm',
   current_stock: 0,
-  minimum_stock: 10,
+  min_stock: 10,
+  price_per_unit: 0,
   supplier: ''
 });
 
@@ -158,7 +165,7 @@ const stockForm = ref({
 });
 
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   return { Authorization: `Bearer ${token}` };
 };
 
@@ -167,7 +174,7 @@ const fetchMaterials = async () => {
     const response = await axios.get(`${API_BASE}/materials`, {
       headers: getAuthHeaders()
     });
-    materials.value = response.data;
+    materials.value = response.data.data ?? response.data;
   } catch (error) {
     console.error('Failed to fetch materials:', error);
     alert('Nie udało się pobrać materiałów');
@@ -186,7 +193,8 @@ const addMaterial = async () => {
       type: 'profil',
       unit: 'm',
       current_stock: 0,
-      minimum_stock: 10,
+      min_stock: 10,
+      price_per_unit: 0,
       supplier: ''
     };
     
@@ -249,8 +257,8 @@ const editMaterial = (material) => {
 };
 
 const getStockClass = (material) => {
-  if (material.current_stock <= material.minimum_stock) return 'stock-low';
-  if (material.current_stock <= material.minimum_stock * 1.5) return 'stock-warning';
+  if (material.current_stock <= material.min_stock) return 'stock-low';
+  if (material.current_stock <= material.min_stock * 1.5) return 'stock-warning';
   return 'stock-ok';
 };
 
