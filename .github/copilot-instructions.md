@@ -1,450 +1,268 @@
-# WindowWidow — AI Agent: Comprehensive System Instructions
+# BertrandSoftware — Copilot Context
 
-## 1. ROLA AGENTA
+## What is this project?
 
-Jesteś ekspertem full-stack od tego konkretnego systemu. Twoja praca to: **analizować istniejący kod → rozumieć kontekst → implementować zadanie zgodnie z ustalonymi wzorcami projektu**. Nie wymyślasz nowej architektury — rozszerzasz istniejącą. Zawsze czytasz powiązany kod przed pisaniem nowego.
-
----
-
-## 2. SYSTEM: WindowWidow
-
-Profesjonalny system ERP do zarządzania produkcją okien. Trzy niezależne panele:
-
-| Panel | Ścieżka frontend | Rola | Odpowiedzialność |
-|---|---|---|---|
-| **Admin** | `/admin/*` | `admin` | Katalog produktów, zamówienia klientów, analityka |
-| **Produkcja** | `/production/*` | `production`, `admin` | Zlecenia produkcyjne, partie, problemy |
-| **Magazyn** | `/warehouse/*` | `warehouse`, `admin` | Dostawy, stany magazynowe materiałów |
+**BB Software** is a large-scale internal ERP system for a Polish window, door and roller-shutter manufacturing company. The system manages the full production lifecycle — from client quote, through multi-line production planning, warehouse logistics, glass tracking, delivery & installation, service requests and finance — all the way to invoicing and archival.
 
 ---
 
-## 3. STOS TECHNOLOGICZNY
+## Tech Stack
 
 ### Backend
-- **PHP 8.1** / **Laravel 10.x** — `backend/`
-- **Laravel Sanctum** — autentykacja tokenem Bearer
-- **MySQL** — baza danych
-- **Wzorzec**: Controller → Service → Model (Service tylko gdy logika biznesowa jest złożona)
-- **PSR-12** — standard kodowania PHP
+| Item | Value |
+|------|-------|
+| Framework | Laravel 9.x |
+| Language | PHP 8.0+ |
+| Database | MySQL (default connection, `mysql`) |
+| Auth | Laravel Sanctum — Token-based; token stored in `localStorage` as `"token"`, sent via `Authorization: Token <token>` header |
+| Architecture | **Controller → Service → Repository → Model** (4-layer). Thin controllers, business logic in Services, DB queries in Repositories extending `BaseRepository`. |
+| Queue | dedicated queues: `downloaders`, `ISL`, `orders`, `TKW`, `KRS`, `CEIDG` |
+| Code standard | PSR-4 autoloading, PascalCase class names, camelCase methods |
+| Key packages | sanctum, guzzle, awobaz/compoships, doctrine/dbal, pusher |
 
 ### Frontend
-- **Vue.js 3** z Composition API (`<script setup>`) — `frontend/src/`
-- **Vite** — bundler
-- **Pinia** — zarządzanie stanem (`frontend/src/stores/`)
-- **Vue Router 4** — routing z guard'ami roli
-- **Vanilla CSS** — bez Tailwind/Bootstrap (własne klasy komponentów)
-- **JavaScript** (nie TypeScript mimo notatki w docs)
+| Item | Value |
+|------|-------|
+| Framework | Vue 3.2+ (Composition API + `<script lang="ts">`) |
+| Build tool | Vite 4.x (`vite.config.js`) |
+| State management | Pinia 2.x — main store: `useRightsStore` (permissions + user data) |
+| Routing | Vue Router 4.x |
+| HTTP client | Custom `AxiosConfig` base class per module, wrapping `axiosAPI` instance from `@/axiosApi.ts`. **Never call axios directly in components.** |
+| UI library | **PrimeVue 3.x** + **Tailwind CSS 3.x** + MDI icons (`@mdi/font`) |
+| Language | TypeScript |
+| Toast | PrimeVue Toast via `addToast(toast, ToastType, summary?, message?)` from `@/utils/composables/addToast.ts` |
+| Key packages | pinia, vue-router, primevue, @tanstack/vue-query, @vueuse/core, @vuelidate/core, pdfmake, chart.js, moment, maz-ui |
 
----
-
-## 4. STRUKTURA KATALOGÓW
-
+### Path aliases (vite.config.js)
 ```
-backend/
-├── app/
-│   ├── Http/Controllers/Api/     # AuthController, DashboardController, WindowController,
-│   │                             # ProfileController, GlassController, OrderController,
-│   │                             # MaterialController, ProductionOrderController, ImageUploadController
-│   ├── Http/Controllers/         # ProductionOrderController (nowy), ProductionBatchController,
-│   │                             # ProductionIssueController, WarehouseDeliveryController,
-│   │                             # NotificationController
-│   ├── Http/Middleware/          # role middleware
-│   ├── Models/                   # Glass, Material, Notification, Order, OrderItem,
-│   │                             # ProductionBatch, ProductionIssue, ProductionMaterial,
-│   │                             # ProductionOrder, ProductionOrderItem, ProductionTimeline,
-│   │                             # Profile, StockMovement, User, WarehouseDelivery, Window
-│   ├── Services/                 # ProductionOrderService, DashboardService, NotificationService
-│   ├── Events/                   # LowStockAlert, ProductionOrderCompleted, ProductionStarted
-│   ├── Listeners/                # NotifyLowStock, NotifyProductionOrderCompleted,
-│   │                             # NotifyWarehouseAboutDelivery
-│   └── Policies/
-├── database/migrations/          # Pełna historia migracji
-└── routes/api.php                # Wszystkie REST endpointy
-
-frontend/src/
-├── views/
-│   ├── production/               # ProductionDashboard, ProductionOrdersList,
-│   │                             # ProductionOrderDetails, ProductionOrderForm, ProductionIssues
-│   ├── warehouse/                # WarehouseDashboard, Materials, Deliveries
-│   ├── admin/                    # AdminDashboard, Reports
-│   └── [root views]              # HomeView, LoginView, WindowsView, ProfilesView,
-│                                 # GlassesView, OrdersView, MaterialsView
-├── stores/                       # auth.js, productionStore.js, warehouseStore.js,
-│                                 # notificationStore.js, index.js
-├── services/                     # api.js (axios instance), productionApi.js,
-│                                 # warehouseApi.js, notificationApi.js
-├── components/                   # ConfirmDialog.vue, LoadingSpinner.vue,
-│                                 # NotificationCenter.vue, PaginationControls.vue,
-│                                 # SearchFilterBar.vue, ToastContainer.vue
-├── composables/                  # useToast.js, useConfirm.js
-└── router/index.js               # Vue Router z guardami roli
+@        → resources/js
+@utils   → resources/js/utils
+@modules → resources/js/modules
 ```
 
 ---
 
-## 5. BAZA DANYCH — KLUCZOWE MODELE I RELACJE
+## Multi-App Architecture
 
-```
-users                     (id, name, email, password, role[admin|production|warehouse])
-├── windows               (id, name, sku, profile_id, glass_id, width, height, price,
-│                          stock_quantity, min_stock, image_url, is_active)
-│   ├── profiles          (id, name, material, color, description, price_per_meter)
-│   └── glasses           (id, name, type, thickness, u_value, price_per_m2)
-├── orders                (id, order_number, customer_name, status, total_price, ...)
-│   └── order_items       (id, order_id, window_id, quantity, unit_price)
-├── materials             (id, name, unit, stock_quantity, min_stock_level, price_per_unit)
-│   └── stock_movements   (id, material_id, type[in|out], quantity, reason, created_by)
-├── production_orders     (id, order_number[PRD-2026-XXXX], source_type, source_id,
-│   │                      customer_name, product_type, quantity, status, priority,
-│   │                      confirmed_by_production, is_delayed, started_at,
-│   │                      estimated_completion_at, actual_completion_at, ...)
-│   ├── production_order_items (id, production_order_id, window_id, quantity, status)
-│   ├── production_timeline    (id, production_order_id, status, notes, created_by)
-│   ├── production_batches     (id, production_order_id, batch_number, quantity,
-│   │                           status[in_production|quality_check|ready|shipped|rejected])
-│   ├── production_issues      (id, production_order_id, title, description, severity,
-│   │                           status[open|in_progress|resolved], resolved_at)
-│   └── production_materials   (id, production_order_id, material_id, quantity_required,
-│                               quantity_used)
-└── warehouse_deliveries  (id, production_order_id, batch_id, status[pending|shipped|
-                           received|rejected], rejection_reason, shipped_at, received_at)
+**CRITICAL**: This is NOT one single-page application. It is **multiple independent Vue applications**, each with its own Vite entry point, router and mount point. Every module lives in `resources/js/modules/<ModuleName>/` and has its own `<module>Main.ts` entry, router and routes namespace.
 
-notifications             (id, user_id, type, title, message, data[JSON], read_at)
-```
+| Module (entry) | Path prefix | Description |
+|---|---|---|
+| `pvcMain.ts` | `/pvc` | PVC & Roller Shutter production management |
+| `woodAndAluMain.ts` | `/woodAndAlu` | Wood & Aluminium production management |
+| `warehouseMain.ts` | `/warehouse` | Warehouse — glass, articles, stands |
+| `deliveryAndInstallationPlannerMain.ts` | `/delivery-and-installation-planner` | Logistics & installation scheduling |
+| `serviceMain.ts` | `/service` | Post-sale service (ZLS/ZLU repair forms) |
+| `analysisMain.ts` | `/analysis` | Sales analysis, client orders, reports |
+| `financeMain.ts` | `/finance` | Financial operations, payment management |
+| `marketingMain.ts` | `/marketing` | Marketing operations |
+| `terminalsPVCMain.ts` | `/terminalsPVC` | PVC production scanning terminals |
+| `terminalsWoodMain.ts` | `/terminalsWood` | Wood/Alu scanning terminals |
+| `efficiencyMain.ts` | `/efficiency` | Production efficiency dashboards |
+| `helpdeskMain.ts` | `/helpdesk` | Internal helpdesk tickets |
+| `ISLTerminalMain.ts` | `/ISL-terminal` | ISL inter-warehouse transfer terminals |
+| `standsMain.ts` | `/stands` | Window transport stand management |
+| `toolsMain.ts` | `/tools` | Utility tools |
+| `humanResourcesMain.ts` | `/hr` | HR — users, permissions, departments |
+| `main.ts` | `/` | Main dashboard + auth + settings |
 
 ---
 
-## 6. RBAC — ROLE I UPRAWNIENIA
+## Backend Route Files (routes/Modules/)
 
-| Operacja | admin | production | warehouse |
-|---|:---:|:---:|:---:|
-| CRUD Windows/Profiles/Glasses/Orders | ✅ | ❌ | ❌ |
-| Odczyt katalog & zamówień | ✅ | ✅ | ✅ |
-| CRUD Materiały + stany mag. | ✅ | ❌ | ✅ |
-| Zlecenia produkcyjne (CRUD + akcje) | ✅ | ✅ | ❌ |
-| Dostawy magazynowe (akcje) | ✅ | ❌ | ✅ |
-| Upload obrazów | ✅ | ❌ | ❌ |
-| Dashboard | ✅ | ✅ | ✅ |
-
-**Middleware backend**: `role:admin`, `role:admin,production`, `role:admin,warehouse`  
-**Guard frontend**: `meta: { requiresRole: ['admin', 'production'] }` w router/index.js
+Routes are split per domain:
+`ordersApi.php`, `productionApi.php`, `warehouseApi.php`, `planProductionApi.php`,
+`productionPVCApi.php`, `woodAndAluApi.php`, `salesApi.php`, `financeApi.php`,
+`deliveryAndInstallationApi.php`, `serviceApi.php`, `analysisApi.php`,
+`helpdeskApi.php`, `hlmrpApi.php`, `humanResourcesApi.php`, `terminalApi.php`,
+`ISLTerminalApi.php`, `standsNewApi.php`, `standsOldApi.php`, `efficiencyApi.php`,
+`marketingApi.php`, `logisticsApi.php`, `commonApi.php`, `glassApi.php`, `toolsApi.php`
 
 ---
 
-## 7. STATE MACHINE — CYKL ZLECENIA PRODUKCYJNEGO
+## Core Domain Models
 
+### Production Lines (Factory enum)
+- `PVC` — standard PVC window production line
+- `PVC_LS` — special/larger PVC line
+- `WOOD` — wood joinery production
+- `ALU` — aluminium window/door production
+- `ROLLER_SHUTTER` — roller shutter production
+
+### Design Types (what gets manufactured per order position)
+`WINDOW`, `DOOR`, `ROLLER_SHUTTER`, `GLASS`, `MOSKITIERA` (insect screen),
+`SUWANKA` (sliding door), `HST`, `WERANDOWE` (porch door), `DOOR-P`, `OTHER`,
+`DOOR-EI` (fire door), `MB-SLIDE`, `FACADE`, `ACCORDION` (folding door),
+`ARTLINE`, `SMOOVIO`, `PSK`, `WINDOWSET`
+
+### Order Status Flow (OrderStatutEnum — integer values)
 ```
-[POST /production/orders]
-        │
-        ▼
-    PENDING ──────────────────────────────────────────────────────────┐
-        │                                                              │
-        │ POST .../start  lub  POST .../update-status                  │
-        │                                                              │
-        ▼                                                              │
-  MATERIALS_CHECK → MATERIALS_RESERVED → IN_PROGRESS ←──────────┐   │
-                                              │                   │   │
-                              ┌───────────────┼───────────────┐   │   │
-                              ▼               ▼               ▼   │   │
-                       create-batch    report-issue      report-delay  │
-                              │         (critical→      │               │
-                              │          ON_HOLD)        │               │
-                              ▼               │          ▼               │
-                      QUALITY_CHECK       ON_HOLD──────►IN_PROGRESS      │
-                              │                                          │
-                              ▼                                          │
-                          COMPLETED                                      │
-                              │                                          │
-                    POST .../ship-to-warehouse                           │
-                              │                                          │
-                              ▼                                          │
-                   SHIPPED_TO_WAREHOUSE                                  │
-                                                                         │
-                         CANCELLED ◄─────────────────────────────────────┘
-                    (admin może anulować z większości stanów)
+100  QUOTE
+200  ORDER_NOT_PROCESSED
+210  ORDER_MODIFIED
+220  PRINT_CONFIRMATION
+240  CHECK_CONFIRMATION
+260  FINANCIAL_APPROVAL
+280  SEND_CONFIRMATION
+398  PUT_ON_HOLD          ← suspend order (critical issue)
+399  REACTIVATE_AFTER_PUT_ON_HOLD
+400  CONFIRMATION_APPROVAL
+420  GLASS_ORDER
+499  PREPARATION_FOR_OPTIMIZATION
+500  OPTIMIZATION_COMPLETED
+501  PARTIAL_OPTIMIZATION
+600  COMPLETE_PRODUCTION_LAUNCH
+601  PARTIAL_PRODUCTION_LAUNCH
+700  END_OF_PRODUCTION
+740  DELIVERY_PREPARATION
+800  DELIVERY_NOTE
+825  DELIVERED_ORDER
+850  INVOICING
+870  ORDER_DELIVERED_AFTER_INVOICING
+900  ARCHIVE
 ```
 
-**Ważne**: `POST .../confirm` NIE zmienia statusu — ustawia `confirmed_by_production=true` i notyfikuje admina.
+### Stock Document Types (StockItemActionEnum)
+- `PW` — internal production receipt
+- `PZ` — external purchase receipt
+- `MM` — internal warehouse transfer
+- `WZ` — external delivery document
+
+### Key Models and Their Purpose
+| Model | Table | Purpose |
+|-------|-------|---------|
+| `ClientOrders` | `client_orders2` | Client-level order (can contain multiple production orders) |
+| `ClientOrdersItems` | `client_orders_items2` | Line items within a client order |
+| `Order` | `orders` | Production order (linked to one ClientOrdersItem) |
+| `Design` | `designs` | Single product position within a production order |
+| `Item` | `items` | Individual manufactured unit (barcode-level) |
+| `OrderLog` | `order_logs` | Immutable audit log of every order status change |
+| `OrderPlan` | `order_plans` | Production schedule entry for an order |
+| `Barcode` | `barcodes` | Barcode assigned to manufactured Item |
+| `TerminalScan` | `terminal_scans` | Worker scan on production terminal |
+| `GlassStock` | `glass_stocks` | Glass inventory entries |
+| `WindowStand` | `window_stands` | Transport stands for finished products |
+| `WarehouseArticle` | `warehouse_articles` | Physical warehouse article (accessories, materials) |
+| `StockItem` | `stock_items` | Stock level record per article |
+| `StockActionLog` | `stock_action_logs` | Immutable stock movement log |
+| `Delivery` | `deliveries` | Delivery to client |
+| `DeliveryNote` | `delivery_notes` | WZ delivery note document |
+| `Shipment` | `shipments` | Links order to a delivery |
+| `ClientOrderStages` | `client_order_stages2` | Invoicing stages for phased orders |
+| `TKW` | `t_k_w_s` | Cost/price calculation (TKW = Techniczny Koszt Wytworzenia) |
+| `IslWarehouseArticlesRequirementList` | `isl_warehouse_articles_requirement_lists` | ISL material demand lists |
+| `ZlsForm` | `zls_forms` | Service intervention form (ZLS) |
+| `ZluForm` | `zlu_forms` | Service check form (ZLU) |
 
 ---
 
-## 8. KLUCZOWE ENDPOINTY API
+## Permission System
 
-**Base URL**: `http://localhost:8000/api`  
-**Auth**: `Authorization: Bearer {token}`
+Permissions are **granular per-user**, stored in the `permissions` table (one row per user). Each column is a `0/1` flag representing a specific feature access.
 
-```
-POST   /login                                    # publiczny
-GET    /me                                       # profil zalogowanego
-GET    /dashboard                                # statystyki (wszystkie role)
+**Backend check** — helper function `getUserFromHeader($request)` used in controllers.
 
-# Katalog
-GET|POST        /windows
-GET|PUT|DELETE  /windows/{id}
-POST            /windows/{id}/update-stock
+**Frontend check** — `useRightsStore().checkPermission('permission_code')` returns `boolean`.
+The store is loaded globally before any navigation and available in all modules.
 
-GET|POST        /profiles
-GET|POST        /glasses
-GET|POST|PUT    /orders | /orders/{id}
-POST            /orders/{id}/update-status
-
-# Materiały
-GET|POST|PUT|DELETE  /materials/{id}
-POST                 /materials/{id}/add-stock
-POST                 /materials/{id}/remove-stock
-GET                  /materials/{id}/movements
-GET                  /low-stock
-
-# Produkcja
-GET    /production/products                      # lista okien do wyboru
-GET    /production/orders                        # lista zleceń
-POST   /production/orders                        # nowe zlecenie
-GET    /production/orders/{id}
-PUT    /production/orders/{id}
-POST   /production/orders/{id}/confirm           # potwierdź (nie zmienia statusu)
-POST   /production/orders/{id}/start             # pending → in_progress
-POST   /production/orders/{id}/update-status     # zmiana statusu
-POST   /production/orders/{id}/update-progress   # postęp + opcjonalna zmiana statusu
-POST   /production/orders/{id}/report-issue      # zgłoś problem
-POST   /production/orders/{id}/report-delay      # zgłoś opóźnienie
-POST   /production/orders/{id}/create-batch      # utwórz partię
-POST   /production/orders/{id}/ship-to-warehouse # wyślij do magazynu
-GET    /production/orders/statistics
-GET    /production/batches | /production/batches/{id}
-POST   /production/batches/{id}/update-status
-GET    /production/issues | /production/issues/{id}
-POST   /production/issues/{id}/resolve
-
-# Magazyn
-GET    /warehouse/deliveries
-GET    /warehouse/deliveries/{id}
-POST   /warehouse/deliveries/{id}/ship
-POST   /warehouse/deliveries/{id}/receive
-POST   /warehouse/deliveries/{id}/reject
-
-# Powiadomienia
-GET    /notifications
-GET    /notifications/unread-count
-POST   /notifications/mark-all-read
-POST   /notifications/{id}/mark-read
-```
+Known permission codes include: `production_settings`, `shifts`, `complete_calendar`, `bzam`, `nowind`, `supplies`, `production_schedule`, `terminals_pvc`, `terminals_wood`, `warehouse_articles`, `hlmrp`, `human_resources`, `marketing`, `isl_terminal`, `db_docs`, `wz_delete`, `client_view_from_production`, `wood_tech`, `pvc_tech`, `user_session_logs`, `logistics_email_management`, `satisfaction_surveys` and many more.
 
 ---
 
-## 9. WZORCE IMPLEMENTACYJNE — OBOWIĄZKOWE
+## Global Frontend Utilities
 
-### 9.1 Backend — Controller (przykład referencyjny)
-```php
-// app/Http/Controllers/Api/ExampleController.php
-namespace App\Http\Controllers\Api;
+### Components (from `@/utils/components/`)
+`<BBButton>`, `<BBInput>`, `<BBInputDate>`, `<BBInputNumber>`, `<BBSelect>`,
+`<BBMultiSelect>`, `<BBListBox>`, `<BBCheckbox>`, `<BBRadio>`, `<BBTable>`,
+`<BBDataTable>`, `<BBModal>` / `<BaseModal>`, `<BBConfirmDialog>`, `<BBSpinner>`,
+`<BBDrawer>`, `<BBOverlay>`, `<BBTextarea>`, `<BBSpeedDial>`, `<Dashboard>`,
+`<PanelFrame>`, `<PanelFrameWithDrawer>`, `<Breadcrumbs>`, `<BackBtn>`
 
-use App\Models\Example;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-
-class ExampleController extends Controller
-{
-    public function index(Request $request): JsonResponse
-    {
-        $query = Example::query();
-        // filtrowanie przez $request->get('search')
-        // paginacja: ->paginate(15)
-        return response()->json($query->paginate(15));
-    }
-
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            // ...
-        ]);
-        $item = Example::create($validated);
-        return response()->json($item, 201);
-    }
-
-    public function update(Request $request, Example $example): JsonResponse
-    {
-        $validated = $request->validate([/* ... */]);
-        $example->update($validated);
-        return response()->json($example);
-    }
-
-    public function destroy(Example $example): JsonResponse
-    {
-        $example->delete();
-        return response()->json(['message' => 'Deleted successfully']);
-    }
-}
-```
-
-### 9.2 Backend — Service (złożona logika biznesowa)
-```php
-// app/Services/ExampleService.php
-// Używaj DB::beginTransaction() / DB::commit() / DB::rollBack()
-// Rzucaj wyjątki Exception z opisem po polsku/angielsku
-// Loguj błędy przez \Log::warning() lub \Log::error()
-```
-
-### 9.3 Frontend — Vue Component (`<script setup>`)
-```vue
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useToast } from '@/composables/useToast'
-import { useConfirm } from '@/composables/useConfirm'
-import api from '@/services/api'
-
-const { success, error } = useToast()
-const { confirm } = useConfirm()
-
-const items = ref([])
-const loading = ref(false)
-
-const fetchItems = async () => {
-  loading.value = true
-  try {
-    const response = await api.get('/endpoint')
-    items.value = response.data.data ?? response.data
-  } catch (err) {
-    error(err.response?.data?.message ?? 'Wystąpił błąd')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleDelete = async (id) => {
-  const confirmed = await confirm({
-    title: 'Potwierdzenie usunięcia',
-    message: 'Czy na pewno chcesz usunąć ten element?',
-    confirmText: 'Usuń',
-    type: 'danger'
-  })
-  if (!confirmed) return
-  try {
-    await api.delete(`/endpoint/${id}`)
-    success('Element usunięty pomyślnie')
-    await fetchItems()
-  } catch (err) {
-    error(err.response?.data?.message ?? 'Błąd podczas usuwania')
-  }
-}
-
-onMounted(fetchItems)
-</script>
-
-<template>
-  <div>
-    <LoadingSpinner v-if="loading" size="large" message="Ładowanie..." />
-    <!-- content -->
-  </div>
-</template>
-```
-
-### 9.4 Frontend — Pinia Store
-```javascript
-// stores/exampleStore.js
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import api from '@/services/api'
-
-export const useExampleStore = defineStore('example', () => {
-  const items = ref([])
-  const loading = ref(false)
-  const error = ref(null)
-
-  const fetchItems = async () => {
-    loading.value = true
-    error.value = null
-    try {
-      const { data } = await api.get('/endpoint')
-      items.value = data.data ?? data
-    } catch (err) {
-      error.value = err.response?.data?.message ?? 'Błąd'
-    } finally {
-      loading.value = false
-    }
-  }
-
-  return { items, loading, error, fetchItems }
-})
-```
-
-### 9.5 Globalne komponenty (dostępne wszędzie bez importu)
-- `<LoadingSpinner size="small|medium|large" message="..." />`
-- `<ConfirmDialog />` — używaj przez composable `useConfirm()`
-- `<ToastContainer />` — używaj przez composable `useToast()`
-- `<PaginationControls />`
-- `<SearchFilterBar />`
-- `<NotificationCenter />`
+### Composables / Utilities
+- `addToast(toast, ToastType.SUCCESS|ERROR|WARNING|INFO, summary?, message?)` — show toast
+- `ToastType` enum — SUCCESS, ERROR, WARNING, INFO, PERMISSION_ERROR
+- `useRightsStore()` — access user, permissions, `checkPermission(code)`
+- `errorHandler` composable — from `@/utils/composables`
+- `useWindowSize()` — from `@vueuse/core`
+- `useCreateVueApp(router)` — factory for all module Vue app instances
 
 ---
 
-## 10. DOMENOWA WIEDZA BIZNESOWA
+## External Integrations
 
-### Produkty
-- **Okno** (`Window`): ma `profile_id`, `glass_id`, wymiary (mm), cenę, SKU, stany magazynowe
-- **Profil** (`Profile`): rama okna — material (PVC/aluminium/drewno), kolor, cena/mb
-- **Szyba** (`Glass`): typ (jednokomorowa/dwukomorowa/trzyszybowa), grubość, współczynnik U, cena/m²
-
-### Produkcja
-- Zlecenie produkcyjne (`ProductionOrder`) jest sercem systemu
-- `order_number` format: `PRD-2026-XXXX` (auto-generowany)
-- `confirmed_by_production` — pracownik produkcji potwierdza realność terminu ZANIM produkcja się zacznie
-- `ProductionBatch` — fizyczna partia wyprodukowanych okien (jedno zlecenie może mieć wiele partii)
-- `ProductionIssue` — problem na linii; `severity=critical` auto-wstrzymuje zlecenie
-- `ProductionTimeline` — log każdej zmiany statusu
-
-### Magazyn
-- `Material` — surowce (profile w mb, szyby w m², uszczelki, okucia)
-- `StockMovement` — każde `in/out` jest logowane z powodem i użytkownikiem
-- `WarehouseDelivery` — odebranie gotowych okien z produkcji do magazynu
+| System | Purpose |
+|--------|---------|
+| **Winpro** | Primary CAD/quoting software; orders are imported via `AllWinproController` (`importWinproAllOrders`, `importWinproBBOrders`, `importWinproWoodOrders`) |
+| **Logikal** | Alternative window design import (`LogikalImportController`) |
+| **SAGE** | ERP/accounting — warehouse articles sync via `WarehouseSageArticle` |
+| **CEIDG** | Polish business registry (sole traders) — downloaded via dedicated queue |
+| **KRS** | Polish business registry (companies) — downloaded via dedicated queue |
+| **Pusher** | Real-time events (Laravel Echo + pusher-js) |
 
 ---
 
-## 11. PROTOKÓŁ WYKONANIA TASKA
+## Critical Business Rules
 
-Każde zadanie wykonuj w tej kolejności:
-
-```
-1. ZROZUM TASK
-   - Co dokładnie ma być zrobione?
-   - Czego NIE ma w systemie a powinno być?
-   - Jakie role mają dostęp?
-
-2. ZBADAJ ISTNIEJĄCY KOD
-   - Znajdź najbardziej podobny istniejący kontroler/komponent/store
-   - Sprawdź migracje — czy tabela już istnieje?
-   - Sprawdź routes/api.php — czy endpoint już jest?
-   - Sprawdź router/index.js — czy trasa vue już jest?
-
-3. ZAPLANUJ ZMIANY
-   - Backend: migracja (jeśli nowa tabela) → Model → Service (jeśli złożone) → Controller → Route
-   - Frontend: Store → Service/Api → View → Router
-
-4. IMPLEMENTUJ
-   - Trzymaj się wzorców z sekcji 9
-   - Używaj istniejących komponentów globalnych (sekcja 9.5)
-   - Nazewnictwo: camelCase (JS), snake_case (PHP), PascalCase (klasy/komponenty)
-   - Komentarze po polsku (zgodnie z istniejącym kodem)
-
-5. WALIDUJ
-   - Czy `$fillable` w modelu zawiera nowe pola?
-   - Czy endpoint jest zabezpieczony właściwym middleware roli?
-   - Czy frontend obsługuje loading i błędy?
-   - Czy toast jest wyświetlony po sukcesie i błędzie?
-   - Czy paginacja jest obsługiwana (jeśli lista)?
-```
+1. **Order status changes MUST go through dedicated service logic** — never update `status` column directly on the model.
+2. **Every order status change is logged** in `OrderLog` — this is an immutable audit trail.
+3. **Wood orders require technological confirmation** (`technology_confirmed` flag) before production launch.
+4. **Production confirmation of an order ≠ status change** — it is a separate field.
+5. **Every stock movement is logged** in `StockActionLog` with reason, user ID and document type (PW/PZ/MM/WZ).
+6. **Glass is tracked with its own stands** (`WindowStand`) — each stand has a barcode and log.
+7. **Barcodes are assigned per manufactured Item** — terminal scans (`TerminalScan`) reference Item + Design.
+8. **TKW (cost price)** is calculated per client order item — never modify it without going through `ItemTkw` / `TKW` models and their service logic.
+9. **ISL transfers** require a `IslWarehouseArticlesRequirementList` before execution — do not skip this step.
+10. **ClientOrders operates on `client_orders2` table** (not `client_orders`) — the `2` tables are the active production tables after a data migration.
+11. **Winpro is the source of truth** for design dimensions and configurations — BB Software receives and displays them, not recalculates them.
+12. **Other order types**: BZAM = special batch accessories orders, NOWIND = special non-window orders — they use separate flows within `OtherOrderController`.
+13. **DB transactions required** for any operation touching multiple tables (especially order + log + plan).
 
 ---
 
-## 12. ZASADY BEZWZGLĘDNE
+## Naming Conventions
 
-1. **Nie zmieniaj architektury** — rozszerzaj istniejące wzorce, nie wymyślaj nowych
-2. **Zawsze sprawdzaj istniejący kod** przed napisaniem nowego — szukaj podobnych implementacji
-3. **Sanctum token** jest wymagany do wszystkich endpointów oprócz `/login` i `/health`
-4. **Transakcje DB** przy operacjach na wielu tabelach — `DB::beginTransaction()`
-5. **Error handling** — try/catch w serwisach, walidacja w kontrolerach przez `$request->validate()`
-6. **Toast notifications** — zawsze po sukcesie i błędzie w akcjach użytkownika
-7. **Loading state** — zawsze przy asynchronicznych operacjach w Vue
-8. **Role check** zarówno na backendzie (middleware) jak i frontendzie (router meta + v-if)
-9. **Paginacja** dla list — backend `->paginate(15)`, frontend obsługuje `data.current_page` itd.
-10. **Język**: komunikaty dla użytkownika — **po polsku**, kod/zmienne/komentarze techniczne — do wyboru
+| Layer | Convention |
+|-------|-----------|
+| PHP classes | PascalCase |
+| PHP methods | camelCase |
+| DB columns | snake_case |
+| Vue components | PascalCase `.vue` files |
+| TypeScript composables | `use` prefix, camelCase |
+| TypeScript enums | PascalCase enum name, UPPER_SNAKE case values |
+| Route files | camelCase (e.g., `ordersApi.php`) |
+| API URL paths | camelCase and kebab-case mixed (follow existing pattern in route file) |
+| CSS classes | Tailwind utility classes; custom classes in kebab-case |
+
+---
+
+## Development Environment
+
+- Backend: `php artisan serve` → `http://localhost:8000`
+- Frontend: `npm run dev` → `http://localhost:5173`
+- Queue workers: run separately per queue name (see `.vscode/tasks.json`)
+- Schedule: `php artisan schedule:work`
+- API base URL: `http://localhost:8000/api` (or `VITE_AXIOS_URL` env var)
+
+---
+
+## Where to Find Things
+
+| What | Where |
+|------|-------|
+| Route definitions | `routes/Modules/*.php` |
+| Controllers | `app/Http/Controllers/<Domain>/` |
+| Services | `app/Services/<Domain>/` |
+| Repositories | `app/Repositories/<Domain>/` |
+| Models | `app/Models/` |
+| Enums (PHP) | `app/Enums/` |
+| Constants (PHP) | `app/Http/Helpers/helpers.php` |
+| Migrations | `database/migrations/` |
+| Vue module entry | `resources/js/modules/<Module>/<module>Main.ts` |
+| Module routes | `resources/js/routes/<Module>/router.ts` + `routes.ts` |
+| Module pages | `resources/js/modules/<Module>/pages/` |
+| Module API layer | `resources/js/modules/<Module>/api/` |
+| Global components | `resources/js/utils/components/` |
+| Global composables | `resources/js/utils/composables/` |
+| Global constants | `resources/js/utils/constants/` |
+| Permission store | `resources/js/stores/rights.ts` |
+| Permission codes (TS) | `resources/js/utils/constants/permissions/<Module>/` |
